@@ -1,6 +1,7 @@
 package io.github.spearchucker667.veniceforge.android.chat
 
 import androidx.room.Room
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import io.github.spearchucker667.veniceforge.core.data.AppDatabase
 import io.github.spearchucker667.veniceforge.core.data.entity.MessageEntity
@@ -15,8 +16,10 @@ import io.github.spearchucker667.veniceforge.sdk.chat.ChatRequest
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatStreamChunk
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -26,7 +29,9 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -52,6 +57,22 @@ class ChatViewModelTest {
             val script = if (callCount < responses.size) responses[callCount] else emptyList()
             callCount++
             return flowOf(*script.toTypedArray())
+        }
+    }
+
+    private class SuspendingChatClient : ChatClient(VeniceForgeSdk(VeniceSdkConfig())) {
+        var callCount = 0
+
+        override fun streamChat(apiKey: String, request: ChatRequest): Flow<ChatStreamChunk> = flow {
+            callCount++
+            emit(ChatStreamChunk.Open())
+            awaitCancellation()
+        }
+    }
+
+    private class FailingChatClient : ChatClient(VeniceForgeSdk(VeniceSdkConfig())) {
+        override fun streamChat(apiKey: String, request: ChatRequest): Flow<ChatStreamChunk> = flow {
+            throw IllegalStateException("stream failed")
         }
     }
 
@@ -86,8 +107,8 @@ class ChatViewModelTest {
                 chatRepo = chat,
                 chatClient = client,
                 apiKeyProvider = { "test-key" },
-                profileId = profileId,
-                initialModelId = "llama-3.3-70b",
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "test-text-model",
             )
             advanceUntilIdle()
 
@@ -101,7 +122,7 @@ class ChatViewModelTest {
             assertEquals("Hello", user.text)
             assertEquals("Hi there", assistant.text)
             assertEquals(MessageStatus.COMPLETED, assistant.status)
-            assertEquals("llama-3.3-70b", finalState.modelId)
+            assertEquals("test-text-model", finalState.modelId)
             assertNull(finalState.error)
         } finally {
             Dispatchers.resetMain()
@@ -147,8 +168,8 @@ class ChatViewModelTest {
                 chatRepo = chat,
                 chatClient = client,
                 apiKeyProvider = { "test-key" },
-                profileId = profileId,
-                initialModelId = "llama-3.3-70b",
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "test-text-model",
             )
             advanceUntilIdle()
 
@@ -200,11 +221,11 @@ class ChatViewModelTest {
             val chat = ChatRepository(syncedDb)
             val convDao = syncedDb.conversationDao()
 
-            val older = chat.createConversation(profileId, "llama-3.3-70b", title = "older")
+            val older = chat.createConversation(profileId, "test-text-model", title = "older")
             convDao.update(
                 convDao.findById(profileId, older)!!.copy(updatedAt = 1_000L, lastOpenedAt = 1_000L),
             )
-            val recent = chat.createConversation(profileId, "llama-3.3-70b", title = "recent")
+            val recent = chat.createConversation(profileId, "test-text-model", title = "recent")
             convDao.update(
                 convDao.findById(profileId, recent)!!.copy(updatedAt = 5_000L, lastOpenedAt = 5_000L),
             )
@@ -224,8 +245,8 @@ class ChatViewModelTest {
                 chatRepo = chat,
                 chatClient = client,
                 apiKeyProvider = { "test-key" },
-                profileId = profileId,
-                initialModelId = "llama-3.3-70b",
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "test-text-model",
             )
             advanceUntilIdle()
 
@@ -239,6 +260,89 @@ class ChatViewModelTest {
             val conversations = chat.observeConversations(profileId).first()
             assertEquals(2, conversations.size)
             assertEquals(recent, conversations.first().id)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun `duplicate submit is ignored while stream is active and cancellation resets state`() = runTest {
+        val roomDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(roomDispatcher)
+        try {
+            val syncedDb = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                AppDatabase::class.java,
+            )
+                .allowMainThreadQueries()
+                .setQueryExecutor(roomDispatcher.asExecutor())
+                .setTransactionExecutor(roomDispatcher.asExecutor())
+                .build()
+            db = syncedDb
+            val profileId = ProfileRepository(syncedDb.profileDao()).ensureDefault()
+            val client = SuspendingChatClient()
+            val vm = ChatViewModel(
+                chatRepo = ChatRepository(syncedDb),
+                chatClient = client,
+                apiKeyProvider = { "test-key" },
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "test-model",
+            )
+            advanceUntilIdle()
+
+            vm.submit("first")
+            advanceUntilIdle()
+            assertTrue(vm.state.value.isStreaming)
+
+            vm.submit("duplicate")
+            advanceUntilIdle()
+            assertEquals(1, client.callCount)
+
+            vm.cancel()
+            advanceUntilIdle()
+            assertFalse(vm.state.value.isStreaming)
+            assertEquals(
+                MessageStatus.CANCELLED,
+                vm.state.value.messages.first { it.role == MessageRole.ASSISTANT }.status,
+            )
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun `stream exception marks assistant failed and resets streaming state`() = runTest {
+        val roomDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(roomDispatcher)
+        try {
+            val syncedDb = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                AppDatabase::class.java,
+            )
+                .allowMainThreadQueries()
+                .setQueryExecutor(roomDispatcher.asExecutor())
+                .setTransactionExecutor(roomDispatcher.asExecutor())
+                .build()
+            db = syncedDb
+            val profileId = ProfileRepository(syncedDb.profileDao()).ensureDefault()
+            val vm = ChatViewModel(
+                chatRepo = ChatRepository(syncedDb),
+                chatClient = FailingChatClient(),
+                apiKeyProvider = { "test-key" },
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "test-model",
+            )
+            advanceUntilIdle()
+
+            vm.submit("hello")
+            advanceUntilIdle()
+
+            assertFalse(vm.state.value.isStreaming)
+            assertEquals("stream failed", vm.state.value.error)
+            assertEquals(
+                MessageStatus.FAILED,
+                vm.state.value.messages.first { it.role == MessageRole.ASSISTANT }.status,
+            )
         } finally {
             Dispatchers.resetMain()
         }

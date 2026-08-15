@@ -15,7 +15,7 @@ class ProfileRepository(private val dao: ProfileDao) {
             createdAt = now,
             updatedAt = now,
         )
-        dao.insert(entity)
+        dao.insertIfAbsent(entity)
         return DEFAULT_PROFILE_ID
     }
 

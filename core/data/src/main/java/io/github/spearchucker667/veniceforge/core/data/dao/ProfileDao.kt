@@ -13,6 +13,9 @@ interface ProfileDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(profile: ProfileEntity)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(profile: ProfileEntity): Long
+
     @Update
     suspend fun update(profile: ProfileEntity)
 

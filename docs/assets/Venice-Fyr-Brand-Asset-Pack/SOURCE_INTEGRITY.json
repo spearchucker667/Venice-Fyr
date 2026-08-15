@@ -1,9 +1,0 @@
-{
-  "source_repo_head_inspected": "02ae314cd2068f1a2a3fe7bd7d500aaf5195ea37",
-  "git_blob_sha1": {
-    "sources/official/venice-keys-off-white.svg": "5fc7871cc20f24d7cbc5653ccc84036d1edeb444",
-    "sources/official/venice-keys-deep-blue.svg": "0e60112c1bc9dee7e8f4adb155082905653fccaf",
-    "sources/product/venice-fyr-mark-repo-baseline.svg": "bc7697646342a9c2be0045a1a43d2631a5f8e59b"
-  },
-  "purpose": "The three blob IDs above match the corresponding files inspected in spearchucker667/Venice-Fyr at generation time. This verifies the official Venice keys in the pack are byte-identical to the vendored repo source, not retraced artwork."
-}

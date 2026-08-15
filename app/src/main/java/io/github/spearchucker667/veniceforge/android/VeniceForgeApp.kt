@@ -44,14 +44,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.spearchucker667.veniceforge.android.chat.ChatScreen
 import io.github.spearchucker667.veniceforge.android.chat.ChatViewModel
+import io.github.spearchucker667.veniceforge.android.chat.ChatViewModelFactory
 import io.github.spearchucker667.veniceforge.android.feature.AppFeature
 import io.github.spearchucker667.veniceforge.android.feature.FeatureCatalog
 import io.github.spearchucker667.veniceforge.android.feature.FeatureGroup
 import io.github.spearchucker667.veniceforge.android.ui.ConfigScreen
 import io.github.spearchucker667.veniceforge.android.image.ImageScreen
 import io.github.spearchucker667.veniceforge.android.image.ImageViewModel
+import io.github.spearchucker667.veniceforge.android.image.ImageViewModelFactory
 import io.github.spearchucker667.veniceforge.core.data.DataServices
 import io.github.spearchucker667.veniceforge.core.security.SecureSecretStore
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
@@ -66,7 +69,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun VeniceForgeApp() {
     var selectedId by rememberSaveable { mutableStateOf("chat") }
-    val selected = remember(selectedId) { FeatureCatalog.byId(selectedId) ?: FeatureCatalog.byId("chat") }
+    val selected = remember(selectedId) {
+        FeatureCatalog.byId(selectedId) ?: requireNotNull(FeatureCatalog.byId("chat"))
+    }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -83,23 +88,28 @@ fun VeniceForgeApp() {
     var profileId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { profileId = profileRepo.ensureDefault() }
 
-    val chatViewModel = remember(profileId) {
-        profileId?.let { pid ->
-            ChatViewModel(
+    val chatViewModel = profileId?.let { pid ->
+        val factory = remember(pid, chatRepo, chatClient, secureStore) {
+            ChatViewModelFactory(
                 chatRepo = chatRepo,
                 chatClient = chatClient,
-                apiKeyProvider = { secureStore.loadApiKey(pid) },
+                apiKeyProvider = {
+                    withContext(Dispatchers.IO) { secureStore.loadApiKey(pid) }
+                },
                 profileId = pid,
                 initialModelId = null,
             )
         }
+        viewModel<ChatViewModel>(key = "chat:$pid", factory = factory)
     }
 
-    val imageViewModel = remember(profileId) {
-        profileId?.let { pid ->
-            ImageViewModel(
+    val imageViewModel = profileId?.let { pid ->
+        val factory = remember(pid, sdk, secureStore, context) {
+            ImageViewModelFactory(
                 imageClient = sdk.imageClient(),
-                apiKeyProvider = { secureStore.loadApiKey(pid) },
+                apiKeyProvider = {
+                    withContext(Dispatchers.IO) { secureStore.loadApiKey(pid) }
+                },
                 uriToBase64 = { uri ->
                     withContext(Dispatchers.IO) {
                         context.contentResolver.openInputStream(uri)?.use { stream ->
@@ -117,12 +127,15 @@ fun VeniceForgeApp() {
                 }
             )
         }
+        viewModel<ImageViewModel>(key = "image:$pid", factory = factory)
     }
 
     var modelCatalog by remember { mutableStateOf<ModelCatalog?>(null) }
     LaunchedEffect(profileId) {
         val pid = profileId
-        val key = pid?.let(secureStore::loadApiKey)
+        val key = pid?.let {
+            withContext(Dispatchers.IO) { secureStore.loadApiKey(it) }
+        }
         if (pid != null && !key.isNullOrBlank()) {
             runCatching { capabilitiesRepo.fetchLiveCapabilities(key) }
                 .onSuccess { catalog ->

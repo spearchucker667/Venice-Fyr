@@ -20,8 +20,8 @@ interface MessageDao {
     @Update
     suspend fun update(message: MessageEntity)
 
-    @Query("UPDATE messages SET textContent = :text, status = :status, updatedAt = :updatedAt WHERE id = :id AND profileId = :profileId")
-    suspend fun updateTextAndStatus(profileId: String, id: String, text: String, status: MessageStatus, updatedAt: Long): Int
+    @Query("UPDATE messages SET textContent = :text, status = :status, updatedAt = :updatedAt WHERE id = :id AND profileId = :profileId AND conversationId = :conversationId")
+    suspend fun updateTextAndStatus(profileId: String, conversationId: String, id: String, text: String, status: MessageStatus, updatedAt: Long): Int
 
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId AND profileId = :profileId ORDER BY createdAt ASC")
     fun observeForConversation(profileId: String, conversationId: String): Flow<List<MessageEntity>>

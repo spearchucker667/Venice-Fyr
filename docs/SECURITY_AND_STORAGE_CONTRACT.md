@@ -1,7 +1,7 @@
 # Android Security and Storage Contract
 
 1. API keys are app-owned secrets. `:venice-sdk` accepts credentials for calls but must never persist them.
-2. App persistence uses Android Keystore-backed encryption. Do not store API keys in DataStore/Room/plain preferences.
+2. API keys are encrypted with Android Keystore-backed storage. Room stores prompts, responses, and other app data unencrypted inside the app-private Android sandbox; do not represent that database as encrypted. Never store API keys in DataStore, Room, or plain preferences.
 3. Credentials stay in credential-protected storage. Do not use Direct Boot/device-protected storage for tokens/passwords.
 4. Do not log raw Authorization headers, API keys, prompt bodies, response bodies, attachment content, or full local URIs/paths.
 5. All provider endpoints default to HTTPS. Cleartext networking remains disabled.

@@ -4,6 +4,10 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import io.github.spearchucker667.veniceforge.core.data.AppDatabase
 import io.github.spearchucker667.veniceforge.core.data.repo.ProfileRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -34,5 +38,15 @@ class ProfileRepositoryTest {
         val first = repo.ensureDefault()
         val second = repo.ensureDefault()
         assertEquals(first, second)
+    }
+
+    @Test
+    fun `concurrent ensureDefault calls converge on one profile`() = runTest {
+        val ids = coroutineScope {
+            List(8) { async { repo.ensureDefault() } }.awaitAll()
+        }
+
+        assertEquals(setOf(ProfileRepository.DEFAULT_PROFILE_ID), ids.toSet())
+        assertEquals(1, db.profileDao().observeAll().first().size)
     }
 }

@@ -1,5 +1,6 @@
 package io.github.spearchucker667.veniceforge.sdk
 
+import io.github.spearchucker667.veniceforge.sdk.image.ImageClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json

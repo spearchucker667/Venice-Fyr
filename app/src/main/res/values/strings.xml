@@ -11,4 +11,9 @@
     <string name="chat_no_api_key">No API key saved. Go to Settings to enter your Venice API key.</string>
     <string name="settings_retry">Retry</string>
     <string name="settings_load_models_error">Model discovery failed</string>
+    <string name="approval_title">Confirm Venice API operation</string>
+    <string name="approval_chat_message">Sending this message calls the Venice API and may incur usage charges.</string>
+    <string name="approval_image_message">This image operation calls the Venice API and may incur usage charges.</string>
+    <string name="approval_confirm">Continue</string>
+    <string name="approval_cancel">Cancel</string>
 </resources>

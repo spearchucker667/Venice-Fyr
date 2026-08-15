@@ -44,5 +44,5 @@ object FeatureCatalog {
         AppFeature("status", "Status", FeatureGroup.SYSTEM, AndroidPortStatus.FOUNDATION, "Diagnostics, tasks, connectivity, rate limits, logs", "Starter reports source baseline; add redacted logs, background jobs, billing/rate-limit diagnostics."),
     )
 
-    fun byId(id: String): AppFeature = all.first { it.id == id }
+    fun byId(id: String): AppFeature? = all.firstOrNull { it.id == id }
 }

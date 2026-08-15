@@ -46,26 +46,37 @@ class ChatRepository(private val db: AppDatabase) {
         require(message.profileId == profileId) { "Message.profileId must equal scoping profileId" }
         require(message.conversationId == conversationId) { "Message.conversationId mismatch" }
         db.withTransaction {
-            require(conversationDao.findById(profileId, conversationId) != null) {
+            val conversation = conversationDao.findById(profileId, conversationId)
+            require(conversation != null) {
                 "Unknown conversationId: $conversationId"
             }
             messageDao.upsert(message)
+            conversationDao.update(
+                conversation.copy(updatedAt = maxOf(System.currentTimeMillis(), conversation.updatedAt + 1)),
+            )
         }
     }
 
     suspend fun updateAssistantText(
         profileId: String,
+        conversationId: String,
         messageId: String,
         text: String,
         status: MessageStatus,
-    ) {
-        messageDao.updateTextAndStatus(
+    ) = db.withTransaction {
+        val conversation = conversationDao.findById(profileId, conversationId)
+        require(conversation != null) { "Unknown conversationId: $conversationId" }
+        val now = maxOf(System.currentTimeMillis(), conversation.updatedAt + 1)
+        val updated = messageDao.updateTextAndStatus(
             profileId = profileId,
+            conversationId = conversationId,
             id = messageId,
             text = text,
             status = status,
-            updatedAt = System.currentTimeMillis(),
+            updatedAt = now,
         )
+        require(updated == 1) { "Unknown messageId for conversation: $messageId" }
+        conversationDao.update(conversation.copy(updatedAt = now))
     }
 
     fun observeConversations(profileId: String): Flow<List<ConversationEntity>> =

@@ -11,7 +11,7 @@ Venice Fyr adopts the visual language of the official Venice.ai brand identity w
 ### Canonical Brand Sources
 - **Live Brand Guidelines & Assets**: [venice.ai/brand](https://venice.ai/brand)
 - **Local Machine-Readable Brand Kit**: [`docs/assets/venice-brand-kit/DESIGN.md`](../docs/assets/venice-brand-kit/DESIGN.md)
-- **Official Brand Guidelines Document**: `docs/assets/venice-brand-guidelines.pdf`
+- **Official Brand Guidelines Document**: `docs/assets/venice-brand-kit/venice-brand-guidelines.pdf`
 - **Integrator Attribution**: [builtinvenice.ai](https://builtinvenice.ai)
 
 ---
@@ -102,6 +102,15 @@ The repository landing page, documentation, and app store listings use brand-com
 | `docs/assets/store/google-play/icon-512.png` | PNG (512x512) | Google Play Store launcher asset matching Beacon v2 identity |
 | `docs/assets/store/google-play/feature-graphic-1024x500.png` | PNG (1024x500) | Google Play Store promotional feature banner |
 | `docs/assets/web/favicon-*.png` | PNG (16-512px) | Web and documentation favicon set |
+
+### Product Source Vectors
+
+The following canonical vector sources are retained for the product beacon mark and Android launcher icon layers:
+
+| Asset Path | Description |
+|---|---|
+| `docs/assets/product-source/venice-fyr-beacon-v2.svg` | Full-color beacon mark source |
+| `docs/assets/product-source/venice-fyr-beacon-monochrome.svg` | Monochrome beacon mark source (Android 13+ themed icon layer) |
 
 ---
 
