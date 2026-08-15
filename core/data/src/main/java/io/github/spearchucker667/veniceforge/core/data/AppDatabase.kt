@@ -40,7 +40,6 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "venice_forge.db",
             )
-                .fallbackToDestructiveMigrationOnDowngrade(true)
                 .build()
 
         const val SCHEMA_VERSION = 1
