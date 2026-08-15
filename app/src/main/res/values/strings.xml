@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Venice Forge</string>
+    <string name="chat_title">Chat</string>
+    <string name="chat_composer_hint">Send a message…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_cancel">Cancel</string>
+    <string name="chat_model_picker_label">Model</string>
+    <string name="chat_no_models">No models loaded. Go to Settings.</string>
+    <string name="chat_no_api_key">No API key saved. Go to Settings.</string>
 </resources>

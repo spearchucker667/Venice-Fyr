@@ -28,19 +28,27 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.spearchucker667.veniceforge.android.chat.ChatScreen
+import io.github.spearchucker667.veniceforge.android.chat.ChatViewModel
 import io.github.spearchucker667.veniceforge.android.feature.AppFeature
 import io.github.spearchucker667.veniceforge.android.feature.FeatureCatalog
 import io.github.spearchucker667.veniceforge.android.feature.FeatureGroup
 import io.github.spearchucker667.veniceforge.android.ui.ConfigScreen
+import io.github.spearchucker667.veniceforge.core.data.DataServices
 import io.github.spearchucker667.veniceforge.core.security.SecureSecretStore
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
+import io.github.spearchucker667.veniceforge.sdk.capabilities.CapabilitiesRepository
+import io.github.spearchucker667.veniceforge.sdk.capabilities.ModelCapabilities
+import io.github.spearchucker667.veniceforge.sdk.chat.ChatClient
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +60,34 @@ fun VeniceForgeApp() {
     val context = LocalContext.current
     val secureStore = remember { SecureSecretStore(context) }
     val sdk = remember { VeniceForgeSdk() }
+
+    // Chat wiring (service-locator, keyed by profileId so the conversation cannot span profiles).
+    val data = remember { DataServices.create(context) }
+    val chatRepo = data.chatRepository
+    val profileRepo = data.profileRepository
+    val chatClient = remember { ChatClient(VeniceForgeSdk()) }
+    var profileId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { profileId = profileRepo.ensureDefault() }
+
+    val chatViewModel = remember(profileId) {
+        profileId?.let { pid ->
+            ChatViewModel(
+                chatRepo = chatRepo,
+                chatClient = chatClient,
+                apiKeyProvider = { secureStore.loadApiKey(pid) },
+                profileId = pid,
+                initialModelId = "llama-3.3-70b",
+            )
+        }
+    }
+    val modelCaps by produceState(initialValue = emptyList<ModelCapabilities>(), profileId) {
+        val pid = profileId
+        val key = pid?.let(secureStore::loadApiKey)
+        if (pid != null && key != null) {
+            value = CapabilitiesRepository(sdk).fetchLiveCapabilities(key).models
+        }
+    }
+    val modelIds = remember(modelCaps) { modelCaps.map { it.id } }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -99,6 +135,19 @@ fun VeniceForgeApp() {
                     sdk = sdk,
                     modifier = Modifier.padding(padding),
                 )
+            } else if (selected.id == "chat") {
+                val vm = chatViewModel
+                if (vm != null) {
+                    ChatScreen(
+                        viewModel = vm,
+                        availableModels = modelIds,
+                        modifier = Modifier.padding(padding),
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(padding).padding(20.dp)) {
+                        Text(stringResource(R.string.chat_no_api_key))
+                    }
+                }
             } else {
                 FeatureScreen(selected, Modifier.padding(padding))
             }
