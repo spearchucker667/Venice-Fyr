@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#151F28"/>
+    <stop offset="1" stop-color="#0A121A"/>
+  </linearGradient>
+  <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#3C8FDD" stop-opacity="0.82"/>
+    <stop offset="0.55" stop-color="#3C8FDD" stop-opacity="0.32"/>
+    <stop offset="1" stop-color="#3C8FDD" stop-opacity="0"/>
+  </linearGradient>
+</defs>
+<rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+<circle cx="512" cy="512" r="390" fill="#151F28" opacity="0.58"/>
+<!-- Venice Fyr custom beacon product mark; NOT an official Venice corporate mark. -->
+<path d="M514 356 L896 250 L896 486 L514 394 Z" fill="url(#beam)"/>
+<circle cx="514" cy="374" r="52" fill="#3C8FDD" opacity="0.25"/>
+<circle cx="514" cy="374" r="24" fill="#F7F5ED"/>
+<path d="M324 744 H700 V782 H324 Z" fill="#29526C"/>
+<path d="M354 714 H670 V744 H354 Z" fill="#151F28"/>
+<path d="M386 452 H638 L608 714 H416 Z" fill="#F7F5ED"/>
+<path d="M408 560 H616 L604 630 H420 Z" fill="#0E2942"/>
+<path d="M348 430 H676 V454 H348 Z" fill="#29526C"/>
+<path d="M392 330 H632 V430 H392 Z" fill="#0E2942"/>
+<path d="M478 330 H546 V430 H478 Z" fill="#3C8FDD"/>
+<path d="M503 330 H521 V430 H503 Z" fill="#F7F5ED"/>
+<path d="M370 330 H654 L594 252 H430 Z" fill="#F7F5ED"/>
+<path d="M504 204 H520 V252 H504 Z" fill="#F7F5ED"/>
+<circle cx="512" cy="194" r="12" fill="#3C8FDD"/>
+</svg>

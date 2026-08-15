@@ -84,13 +84,13 @@ To prevent misleading users into believing the application is an official Venice
    - Background: `app/src/main/res/drawable/ic_launcher_background.xml` (Midnight Blue `#0A121A`)
    - Foreground: `app/src/main/res/drawable/ic_launcher_foreground.xml` (Beacon & beam within 66dp safe zone)
    - Monochrome: `app/src/main/res/drawable/ic_launcher_monochrome.xml` (Android 13+ themed icon layer)
-3. **Official Venice Presence**: In-app About, Settings, and Model Discovery screens feature the unmodified Venice wordmark and Built in Venice badge.
+3. **Official Venice Presence**: In-app Navigation Drawer and Settings/Config screens feature the unmodified official Venice crossed keys (`app/src/main/res/drawable/ic_venice_keys_off_white.xml` / `ic_venice_keys_deep_blue.xml`) in approved ink (`#F7F5ED` / `#0E2942`) with theme-aware contrast.
 
 ---
 
-## 6. Repository Branding Assets
+## 6. Repository Branding & Store Assets
 
-The repository landing page and documentation use brand-compliant artwork:
+The repository landing page, documentation, and app store listings use brand-compliant artwork:
 
 | Asset Path | Format / Dimensions | Description |
 |---|---|---|
@@ -99,6 +99,9 @@ The repository landing page and documentation use brand-compliant artwork:
 | `docs/assets/venice-fyr-social-preview.png` | PNG (1280x640) | GitHub social sharing preview card |
 | `docs/assets/venice-fyr-mark.png` | PNG (512x512) | Square product mark |
 | `docs/assets/venice-fyr-mark.svg` | SVG (512x512) | Scalable square product mark |
+| `docs/assets/store/google-play/icon-512.png` | PNG (512x512) | Google Play Store launcher asset matching Beacon v2 identity |
+| `docs/assets/store/google-play/feature-graphic-1024x500.png` | PNG (1024x500) | Google Play Store promotional feature banner |
+| `docs/assets/web/favicon-*.png` | PNG (16-512px) | Web and documentation favicon set |
 
 ---
 

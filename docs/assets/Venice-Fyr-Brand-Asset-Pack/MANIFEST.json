@@ -1,0 +1,47 @@
+{
+  "name": "Venice Fyr Brand Asset Pack",
+  "version": "2026-08-15",
+  "target_repository": "https://github.com/spearchucker667/Venice-Fyr",
+  "brand_policy": "Independent Venice Fyr product mark + exact official Venice attribution marks",
+  "colors": {
+    "venetian_blue_light": "#3C8FDD",
+    "venetian_blue_dark": "#125DA3",
+    "deep_blue": "#0E2942",
+    "midnight_blue": "#0A121A",
+    "off_white": "#F7F5ED",
+    "sea_light": "#B3D0EB",
+    "mid_sea": "#29526C",
+    "sea_dark": "#080F16",
+    "stucco_light": "#6E6B5F",
+    "stucco_mid": "#BEA989",
+    "stucco_dark": "#1C1714",
+    "neutral_light": "#FFFEFA",
+    "neutral_gray": "#6E7176",
+    "neutral_dark": "#151F28"
+  },
+  "groups": {
+    "product": "Custom Venice Fyr Beacon v2 product assets; launcher/store/docs identity.",
+    "android/res": "Ready-to-review Android resources mirroring app/src/main/res targets.",
+    "official-venice": "Official Venice crossed-key derivatives using exact geometry and approved colors.",
+    "in-app/splash": "Light/dark splash candidates with separated product and provider attribution.",
+    "store": "Google Play listing artwork.",
+    "docs": "README and GitHub visual assets.",
+    "web": "Product favicons.",
+    "tokens": "Official Venice palette reference tokens.",
+    "sources": "Vector sources for generated outputs and retained repo baseline."
+  },
+  "official_source_paths": [
+    "docs/assets/venice-brand-kit/DESIGN.md",
+    "docs/assets/venice-brand-kit/logos/keys/",
+    "docs/assets/venice-brand-kit/logos/wordmark/",
+    "docs/assets/venice-brand-kit/logos/lockup/",
+    "https://venice.ai/brand"
+  ],
+  "notes": [
+    "No proprietary font binaries are included.",
+    "Do not use official Venice keys as the default launcher under current repo branding policy.",
+    "Built in Venice badge should be sourced from the current official brand kit if missing locally; never synthesize it."
+  ],
+  "source_repo_head_inspected": "02ae314cd2068f1a2a3fe7bd7d500aaf5195ea37",
+  "source_repo_head_note": "Re-check HEAD before integration; the repository may advance after pack generation."
+}

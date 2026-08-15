@@ -1,14 +1,18 @@
 package io.github.spearchucker667.veniceforge.android.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,10 +23,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import io.github.spearchucker667.veniceforge.android.R
 import io.github.spearchucker667.veniceforge.core.designsystem.CodexPetState
 import io.github.spearchucker667.veniceforge.core.designsystem.VeniceLoadingIndicator
 import io.github.spearchucker667.veniceforge.core.designsystem.VenicePetStatusIndicator
@@ -44,6 +51,7 @@ fun ConfigScreen(
     var loading by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var models by remember { mutableStateOf<List<VeniceModel>>(emptyList()) }
+    val isDark = isSystemInDarkTheme()
 
     LaunchedEffect(Unit) {
         val existing = secureStore.loadApiKey(profileId)
@@ -59,7 +67,27 @@ fun ConfigScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Text("Venice API", fontWeight = FontWeight.Bold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            ) {
+                Image(
+                    painter = painterResource(
+                        if (isDark) R.drawable.ic_venice_keys_off_white
+                        else R.drawable.ic_venice_keys_deep_blue,
+                    ),
+                    contentDescription = "Official Venice crossed keys",
+                    modifier = Modifier.size(36.dp),
+                )
+                Column {
+                    Text("Venice API", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Official Venice.ai API integration & capability discovery",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
             Text("Starter functionality: secure API-key persistence plus live /models capability discovery.")
         }
         item {
