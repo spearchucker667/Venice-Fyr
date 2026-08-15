@@ -266,6 +266,89 @@ class ChatViewModelTest {
     }
 
     @Test
+    fun `model selection is persisted on the active conversation`() = runTest {
+        val roomDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(roomDispatcher)
+        try {
+            val syncedDb = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                AppDatabase::class.java,
+            )
+                .allowMainThreadQueries()
+                .setQueryExecutor(roomDispatcher.asExecutor())
+                .setTransactionExecutor(roomDispatcher.asExecutor())
+                .build()
+            db = syncedDb
+            val profileId = ProfileRepository(syncedDb.profileDao()).ensureDefault()
+            val chat = ChatRepository(syncedDb)
+            val vm = ChatViewModel(
+                chatRepo = chat,
+                chatClient = RecordingChatClient(emptyList()),
+                apiKeyProvider = { "test-key" },
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "initial-model",
+            )
+            advanceUntilIdle()
+
+            vm.setModel("  selected-live-model  ")
+            advanceUntilIdle()
+
+            val conversation = chat.observeConversations(profileId).first().single()
+            assertEquals("selected-live-model", vm.state.value.modelId)
+            assertEquals("selected-live-model", conversation.modelId)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun `restart restores the latest conversation model before applying catalog default`() = runTest {
+        val roomDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(roomDispatcher)
+        try {
+            val syncedDb = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                AppDatabase::class.java,
+            )
+                .allowMainThreadQueries()
+                .setQueryExecutor(roomDispatcher.asExecutor())
+                .setTransactionExecutor(roomDispatcher.asExecutor())
+                .build()
+            db = syncedDb
+            val profileId = ProfileRepository(syncedDb.profileDao()).ensureDefault()
+            val chat = ChatRepository(syncedDb)
+            val firstVm = ChatViewModel(
+                chatRepo = chat,
+                chatClient = RecordingChatClient(emptyList()),
+                apiKeyProvider = { "test-key" },
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = "catalog-default",
+            )
+            advanceUntilIdle()
+            firstVm.setModel("persisted-model")
+            advanceUntilIdle()
+
+            val restartedVm = ChatViewModel(
+                chatRepo = chat,
+                chatClient = RecordingChatClient(emptyList()),
+                apiKeyProvider = { "test-key" },
+                savedStateHandle = SavedStateHandle(mapOf(ChatViewModel.KEY_PROFILE_ID to profileId)),
+                initialModelId = null,
+            )
+            restartedVm.setDefaultModelIfUnset("different-catalog-default")
+            advanceUntilIdle()
+
+            assertEquals("persisted-model", restartedVm.state.value.modelId)
+            assertEquals(
+                "persisted-model",
+                chat.observeConversations(profileId).first().single().modelId,
+            )
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
     fun `duplicate submit is ignored while stream is active and cancellation resets state`() = runTest {
         val roomDispatcher = StandardTestDispatcher(testScheduler)
         Dispatchers.setMain(roomDispatcher)

@@ -79,6 +79,23 @@ class ChatRepository(private val db: AppDatabase) {
         conversationDao.update(conversation.copy(updatedAt = now))
     }
 
+    suspend fun updateConversationModel(
+        profileId: String,
+        conversationId: String,
+        modelId: String,
+    ) = db.withTransaction {
+        val normalizedModelId = modelId.trim()
+        require(normalizedModelId.isNotEmpty()) { "modelId must not be blank" }
+        val conversation = conversationDao.findById(profileId, conversationId)
+        require(conversation != null) { "Unknown conversationId: $conversationId" }
+        conversationDao.update(
+            conversation.copy(
+                modelId = normalizedModelId,
+                updatedAt = maxOf(System.currentTimeMillis(), conversation.updatedAt + 1),
+            ),
+        )
+    }
+
     fun observeConversations(profileId: String): Flow<List<ConversationEntity>> =
         conversationDao.observeForProfile(profileId)
 

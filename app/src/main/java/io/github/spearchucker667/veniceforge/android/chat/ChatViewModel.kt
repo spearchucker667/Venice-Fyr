@@ -16,6 +16,7 @@ import io.github.spearchucker667.veniceforge.sdk.chat.ChatRequest
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatStreamAccumulator
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatStreamChunk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
@@ -63,19 +64,25 @@ class ChatViewModel(
 
     private var conversationId: String? = savedStateHandle[KEY_CONVERSATION_ID]
     private var streamJob: Job? = null
+    private var hasExplicitModelSelection = false
     private val _state = MutableStateFlow(ChatUiState(modelId = initialModelId))
     val state: StateFlow<ChatUiState> = _state.asStateFlow()
+    private val conversationReady = CompletableDeferred<Unit>()
 
     init {
         viewModelScope.launch {
             val existing = chatRepo.observeConversations(profileId).first()
-            val convId = if (existing.isNotEmpty()) {
-                existing.first().id
-            } else {
-                chatRepo.createConversation(profileId, initialModelId ?: "")
-            }
+            val restoredConversation = existing.firstOrNull()
+            val convId = restoredConversation?.id
+                ?: chatRepo.createConversation(profileId, initialModelId ?: "")
             conversationId = convId
             savedStateHandle[KEY_CONVERSATION_ID] = convId
+            if (!hasExplicitModelSelection) {
+                restoredConversation?.modelId?.takeIf(String::isNotBlank)?.let { restoredModelId ->
+                    _state.update { it.copy(modelId = restoredModelId) }
+                }
+            }
+            conversationReady.complete(Unit)
             chatRepo.observeMessages(profileId, convId).collect { msgs ->
                 _state.update {
                     it.copy(messages = msgs.map(::toUi))
@@ -85,12 +92,22 @@ class ChatViewModel(
     }
 
     fun setModel(modelId: String) {
-        _state.update { it.copy(modelId = modelId) }
+        val normalizedModelId = modelId.trim()
+        if (normalizedModelId.isEmpty()) return
+        hasExplicitModelSelection = true
+        _state.update { it.copy(modelId = normalizedModelId) }
+        persistModelAfterInitialization(normalizedModelId)
     }
 
     fun setDefaultModelIfUnset(defaultModelId: String) {
-        _state.update {
-            if (it.modelId.isNullOrBlank()) it.copy(modelId = defaultModelId) else it
+        val normalizedModelId = defaultModelId.trim()
+        if (normalizedModelId.isEmpty()) return
+        viewModelScope.launch {
+            conversationReady.await()
+            if (_state.value.modelId.isNullOrBlank()) {
+                _state.update { it.copy(modelId = normalizedModelId) }
+                persistModel(normalizedModelId)
+            }
         }
     }
 
@@ -241,6 +258,19 @@ class ChatViewModel(
 
     fun observeConversationForView(convId: String): Flow<List<MessageEntity>> =
         chatRepo.observeMessages(profileId, convId)
+
+    private fun persistModelAfterInitialization(modelId: String) {
+        viewModelScope.launch {
+            conversationReady.await()
+            persistModel(modelId)
+        }
+    }
+
+    private suspend fun persistModel(modelId: String) {
+        conversationId?.let { convId ->
+            chatRepo.updateConversationModel(profileId, convId, modelId)
+        }
+    }
 
     private fun toUi(m: MessageEntity): UiMessage =
         UiMessage(id = m.id, role = m.role, text = m.textContent, status = m.status)
