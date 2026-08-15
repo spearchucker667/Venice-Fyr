@@ -2,7 +2,6 @@
     <style name="Theme.VeniceForge" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:statusBarColor">#080808</item>
         <item name="android:navigationBarColor">#080808</item>
     </style>
