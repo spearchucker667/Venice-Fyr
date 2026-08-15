@@ -1,0 +1,16 @@
+{
+  "object": "list",
+  "type": "text",
+  "data": [
+    {
+      "id": "llama-3.3-70b",
+      "compatible_with": ["deepseek-r1", "gpt-4o", "claude-3-5-sonnet"],
+      "alias_kind": "openai_compat"
+    },
+    {
+      "id": "deepseek-r1",
+      "compatible_with": ["llama-3.3-70b"],
+      "alias_kind": "openai_compat"
+    }
+  ]
+}

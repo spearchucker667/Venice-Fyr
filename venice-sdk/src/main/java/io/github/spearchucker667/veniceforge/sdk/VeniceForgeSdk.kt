@@ -57,6 +57,40 @@ class VeniceForgeSdk(
         }
     }
 
+    /**
+     * Internal helper that issues a raw authenticated GET to a relative Venice path
+     * and returns the response body verbatim. Used by [CapabilitiesRepository] to
+     * parse endpoints whose shape is not yet promoted to typed SDK methods.
+     *
+     * Public SDK callers should prefer typed methods on this facade; this helper
+     * is intentionally [internal] until individual typed accessors land.
+     */
+    internal suspend fun getRaw(path: String, apiKey: String): String = withContext(Dispatchers.IO) {
+        require(apiKey.isNotBlank()) { "apiKey must not be blank" }
+        val url = baseUrl.newBuilder()
+            .addPathSegments(path.trimStart('/'))
+            .build()
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $apiKey")
+            .header("Accept", "application/json")
+            .header("User-Agent", config.userAgent)
+            .get()
+            .build()
+
+        val response = try {
+            httpClient.newCall(request).execute()
+        } catch (e: IOException) {
+            throw VeniceSdkException.Network(e)
+        }
+
+        response.use { res ->
+            val requestId = res.header("x-request-id") ?: res.header("request-id")
+            if (!res.isSuccessful) throw VeniceSdkException.Http(res.code, requestId)
+            res.body.string()
+        }
+    }
+
     private fun parseModel(element: kotlinx.serialization.json.JsonElement): VeniceModel? {
         val obj = element as? JsonObject ?: return null
         val id = obj.stringOrNull("id") ?: return null

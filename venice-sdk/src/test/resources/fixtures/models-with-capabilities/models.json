@@ -1,0 +1,48 @@
+{
+  "object": "list",
+  "type": "all",
+  "data": [
+    {
+      "id": "llama-3.3-70b",
+      "object": "model",
+      "created": 1700000000,
+      "owned_by": "venice.ai",
+      "model_spec": {
+        "name": "Llama 3.3 70B",
+        "description": "Open-weight chat model.",
+        "availableContextTokens": 128000,
+        "capabilities": {
+          "supportsVision": true,
+          "supportsFunctionCalling": true
+        },
+        "pricing": {
+          "input": { "usd": 0.45 },
+          "output": { "usd": 0.55 }
+        },
+        "beta": false
+      },
+      "metadata": {
+        "release_region": "us-east"
+      }
+    },
+    {
+      "id": "deepseek-r1",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "deepseek",
+      "model_spec": {
+        "name": "DeepSeek R1",
+        "description": null,
+        "availableContextTokens": 64000,
+        "capabilities": {
+          "supportsVision": false,
+          "supportsFunctionCalling": false,
+          "supportsReasoning": true
+        },
+        "pricing": {
+          "input": { "usd": 0.10 }
+        }
+      }
+    }
+  ]
+}

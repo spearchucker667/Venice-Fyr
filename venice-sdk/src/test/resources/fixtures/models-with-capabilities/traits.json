@@ -1,0 +1,29 @@
+{
+  "object": "list",
+  "type": "text",
+  "data": [
+    {
+      "id": "llama-3.3-70b",
+      "supports_image_input": true,
+      "supports_tool_calling": true,
+      "supports_streaming": true,
+      "supports_system_prompt": true,
+      "input_modalities": ["text", "image"],
+      "output_modalities": ["text"],
+      "max_context_tokens": 128000,
+      "traits": { "default_vision": "true", "function_calling_default": "true" },
+      "reasoning_effort_default": "medium"
+    },
+    {
+      "id": "deepseek-r1",
+      "supports_image_input": false,
+      "supports_tool_calling": false,
+      "supports_streaming": true,
+      "supports_system_prompt": true,
+      "input_modalities": ["text"],
+      "output_modalities": ["text"],
+      "max_context_tokens": 64000,
+      "traits": { "default_reasoning": "true" }
+    }
+  ]
+}
