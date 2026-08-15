@@ -1,23 +1,39 @@
 {
   "object": "list",
-  "type": "all",
+  "type": "text",
   "data": [
     {
       "id": "llama-3.3-70b",
       "object": "model",
       "created": 1700000000,
       "owned_by": "venice.ai",
+      "type": "text",
       "model_spec": {
         "name": "Llama 3.3 70B",
         "description": "Open-weight chat model.",
         "availableContextTokens": 128000,
+        "privacy": "private",
+        "uncensored": true,
+        "traits": [
+          "default",
+          "fastest",
+          "uncensored"
+        ],
         "capabilities": {
           "supportsVision": true,
-          "supportsFunctionCalling": true
+          "supportsFunctionCalling": true,
+          "supportsWebSearch": true,
+          "supportsReasoning": false
         },
         "pricing": {
-          "input": { "usd": 0.45 },
-          "output": { "usd": 0.55 }
+          "input": {
+            "usd": 0.45,
+            "diem": 0.45
+          },
+          "output": {
+            "usd": 0.55,
+            "diem": 0.55
+          }
         },
         "beta": false
       },
@@ -29,18 +45,32 @@
       "id": "deepseek-r1",
       "object": "model",
       "created": 1710000000,
-      "owned_by": "deepseek",
+      "owned_by": "venice.ai",
+      "type": "text",
       "model_spec": {
         "name": "DeepSeek R1",
-        "description": null,
+        "description": "Reasoning model.",
         "availableContextTokens": 64000,
+        "privacy": "private",
+        "uncensored": false,
+        "traits": [
+          "reasoning"
+        ],
         "capabilities": {
           "supportsVision": false,
           "supportsFunctionCalling": false,
-          "supportsReasoning": true
+          "supportsReasoning": true,
+          "supportsWebSearch": false
         },
         "pricing": {
-          "input": { "usd": 0.10 }
+          "input": {
+            "usd": 0.10,
+            "diem": 0.10
+          },
+          "output": {
+            "usd": 0.20,
+            "diem": 0.20
+          }
         }
       }
     }

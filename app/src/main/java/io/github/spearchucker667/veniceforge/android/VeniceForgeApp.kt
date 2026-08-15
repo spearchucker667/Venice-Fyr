@@ -43,35 +43,43 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveable
 import io.github.spearchucker667.veniceforge.android.chat.ChatScreen
 import io.github.spearchucker667.veniceforge.android.chat.ChatViewModel
 import io.github.spearchucker667.veniceforge.android.feature.AppFeature
 import io.github.spearchucker667.veniceforge.android.feature.FeatureCatalog
 import io.github.spearchucker667.veniceforge.android.feature.FeatureGroup
 import io.github.spearchucker667.veniceforge.android.ui.ConfigScreen
+import io.github.spearchucker667.veniceforge.android.image.ImageScreen
+import io.github.spearchucker667.veniceforge.android.image.ImageViewModel
 import io.github.spearchucker667.veniceforge.core.data.DataServices
 import io.github.spearchucker667.veniceforge.core.security.SecureSecretStore
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
 import io.github.spearchucker667.veniceforge.sdk.capabilities.CapabilitiesRepository
-import io.github.spearchucker667.veniceforge.sdk.capabilities.ModelCapabilities
+import io.github.spearchucker667.veniceforge.sdk.capabilities.ModelCatalog
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VeniceForgeApp() {
-    var selected by remember { mutableStateOf(FeatureCatalog.byId("chat")) }
+    var selectedId by rememberSaveable { mutableStateOf("chat") }
+    val selected = remember(selectedId) { FeatureCatalog.byId(selectedId) ?: FeatureCatalog.byId("chat") }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val secureStore = remember { SecureSecretStore(context) }
     val sdk = remember { VeniceForgeSdk() }
 
-    // Chat wiring (service-locator, keyed by profileId so the conversation cannot span profiles).
+    // Shared networking & chat wiring
     val data = remember { DataServices.create(context) }
     val chatRepo = data.chatRepository
     val profileRepo = data.profileRepository
-    val chatClient = remember { ChatClient(VeniceForgeSdk()) }
+    val chatClient = remember(sdk) { ChatClient(sdk) }
+    val capabilitiesRepo = remember(sdk) { CapabilitiesRepository(sdk) }
+
     var profileId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { profileId = profileRepo.ensureDefault() }
 
@@ -82,18 +90,57 @@ fun VeniceForgeApp() {
                 chatClient = chatClient,
                 apiKeyProvider = { secureStore.loadApiKey(pid) },
                 profileId = pid,
-                initialModelId = "llama-3.3-70b",
+                initialModelId = null,
             )
         }
     }
-    val modelCaps by produceState(initialValue = emptyList<ModelCapabilities>(), profileId) {
-        val pid = profileId
-        val key = pid?.let(secureStore::loadApiKey)
-        if (pid != null && key != null) {
-            value = CapabilitiesRepository(sdk).fetchLiveCapabilities(key).models
+
+    val imageViewModel = remember(profileId) {
+        profileId?.let { pid ->
+            ImageViewModel(
+                imageClient = sdk.imageClient(),
+                apiKeyProvider = { secureStore.loadApiKey(pid) },
+                uriToBase64 = { uri ->
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            val bytes = stream.readBytes()
+                            android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        }
+                    }
+                },
+                saveBytesToCache = { bytes ->
+                    withContext(Dispatchers.IO) {
+                        val file = java.io.File(context.cacheDir, "venice_image_${System.currentTimeMillis()}.png")
+                        file.writeBytes(bytes)
+                        android.net.Uri.fromFile(file)
+                    }
+                }
+            )
         }
     }
-    val modelIds = remember(modelCaps) { modelCaps.map { it.id } }
+
+    var modelCatalog by remember { mutableStateOf<ModelCatalog?>(null) }
+    LaunchedEffect(profileId) {
+        val pid = profileId
+        val key = pid?.let(secureStore::loadApiKey)
+        if (pid != null && !key.isNullOrBlank()) {
+            runCatching { capabilitiesRepo.fetchLiveCapabilities(key) }
+                .onSuccess { catalog ->
+                    modelCatalog = catalog
+                    catalog.defaultTextModelId?.let { defaultModel ->
+                        chatViewModel?.setDefaultModelIfUnset(defaultModel)
+                    }
+                }
+        }
+    }
+
+    val modelIds = remember(modelCatalog) {
+        modelCatalog?.models?.filter { it.supportsTextChat }?.map { it.id } ?: emptyList()
+    }
+
+    val imageModelIds = remember(modelCatalog) {
+        modelCatalog?.models?.filter { it.supportsImageGeneration }?.map { it.id } ?: emptyList()
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -127,7 +174,7 @@ fun VeniceForgeApp() {
                             label = { Text(feature.label) },
                             selected = selected.id == feature.id,
                             onClick = {
-                                selected = feature
+                                selectedId = feature.id
                                 scope.launch { drawerState.close() }
                             },
                             modifier = Modifier.padding(horizontal = 8.dp),
@@ -163,6 +210,19 @@ fun VeniceForgeApp() {
                     ChatScreen(
                         viewModel = vm,
                         availableModels = modelIds,
+                        modifier = Modifier.padding(padding),
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(padding).padding(20.dp)) {
+                        Text(stringResource(R.string.chat_no_api_key))
+                    }
+                }
+            } else if (selected.id == "image") {
+                val vm = imageViewModel
+                if (vm != null) {
+                    ImageScreen(
+                        viewModel = vm,
+                        availableModels = imageModelIds,
                         modifier = Modifier.padding(padding),
                     )
                 } else {

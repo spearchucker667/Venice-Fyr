@@ -2,14 +2,14 @@
 
 - Generated: 2026-08-15
 - Desktop product: Venice Forge `3.0.0-beta.2`
-- Attached archive: `Venice_Forge-main.zip`
-- Remote: `spearchucker667/Venice_Forge` / `main`
-- Latest remote commit observed during kickoff: `bc5c17374ef4937f5837f5580d29a88bfab333ee`
-- Venice API upstream commit recorded by desktop: `db3b9f4f40fe71abff2011bcaa9c23ad797c94f3`
-- Venice schema version: `20260814.153445`
+- Desktop remote: `spearchucker667/Venice_Forge` / `main`
+- Latest desktop remote commit observed: `bc5c17374ef4937f5837f5580d29a88bfab333ee`
+- Venice API official repository: `https://github.com/veniceai/api-docs.git` / `main`
+- Venice API upstream commit: `6e69346b13695bd53ba33a1d34e7b28841e10f98`
+- Venice OpenAPI schema version: `20260814.194349`
 - Canonical Android feature IDs: 22, from desktop `src/config/tabs.ts`
 
-## Android toolchain selected
+## Android Toolchain Selected
 
 - AGP 9.3.0
 - Gradle 9.5.0
@@ -28,15 +28,30 @@
 
 The dependency set intentionally favors stable releases. Re-verify versions before each release branch; do not use dynamic version selectors.
 
-## Runtime desktop source resolution
+## Runtime Source-of-Truth Bootstrap Contracts
 
-The SHA above is the kickoff baseline, not a permanent pin. Each agent session must refresh the read-only desktop mirror from `https://github.com/spearchucker667/Venice_Forge.git` `main` using `scripts/bootstrap-desktop-source.sh`, then record/use the resulting `VENICE_FORGE_DESKTOP_HEAD` from `.local/desktop-source.env`. Current desktop `origin/main` wins over this historical kickoff SHA for parity behavior.
+### 1. Venice API Docs Mirror
+- Script: `scripts/bootstrap-venice-api-docs.sh`
+- State file: `.local/venice-api-docs.env`
+- Source mirror: `/Users/super_user/Projects/Venice Fyr/.source/venice-api-docs/`
+- Reference manifest: `docs/reference/VENICE_API_SOURCE_MANIFEST.md`
+- Documentation guide: `docs/VENICE_API_SOURCE_BOOTSTRAP.md`
 
-Expected local mirror: `/Users/super_user/Projects/Venice Fyr/.source/Venice_Forge-desktop/`.
+### 2. Venice Forge Desktop Mirror
+- Script: `scripts/bootstrap-desktop-source.sh`
+- State file: `.local/desktop-source.env`
+- Source mirror: `/Users/super_user/Projects/Venice Fyr/.source/Venice_Forge-desktop/`
+- Documentation guide: `docs/DESKTOP_SOURCE_BOOTSTRAP.md`
 
-## Milestone 1 — typed capabilities + SSE + Room v1 (2026-08-15)
+## Milestone 1 — Typed Capabilities, Authoritative Traits, SSE, Multi-Turn, Room v1
 
-- Desktop HEAD at start: `bc5c17374ef4937f5837f5580d29a88bfab333ee`
-- New modules: `:core:data`
-- New dependencies: AndroidX Room 2.7.0 (`room-runtime`, `room-ktx`, `room-compiler`, `room-testing`); KSP 2.3.11; Robolectric 4.13; `kotlinx-coroutines-test` 1.11.0; `kotlinx-serialization` JSON 1.11.0; `org.jetbrains.kotlin.plugin.serialization` 2.3.21.
-- Behavior ported: `/models` typed metadata merging with `/models/traits` + `/models/compatibility_mapping`; `/chat/completions` SSE streaming with tool-call fragment reconstruction; Room schema v1 with profile scoping.
+- Venice API Docs HEAD: `6e69346b13695bd53ba33a1d34e7b28841e10f98` (Swagger `20260814.194349`)
+- Desktop HEAD: `bc5c17374ef4937f5837f5580d29a88bfab333ee`
+- Implemented:
+  - Runtime dynamic model discovery and `model_spec` parsing (`VeniceModel`, `ModelSpec`, `ModelCapabilities`, `ModelCatalog`).
+  - Authoritative `/models/traits` (`{"default": "model-id"}`) and `/models/compatibility_mapping` parsing.
+  - Multi-turn conversation history persistence and request serialization.
+  - SSE streaming with multi-tool-call delta parsing and single terminal event enforcement.
+  - Cooperative stream cancellation with underlying OkHttp call cancellation.
+  - Structured SDK error hierarchy (`RateLimit`, `Authentication`, `Validation`, `Server`, `Http`) with header extraction.
+  - Shared SDK instance across UI and background layers.

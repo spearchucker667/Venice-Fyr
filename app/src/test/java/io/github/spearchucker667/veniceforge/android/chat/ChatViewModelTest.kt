@@ -7,12 +7,12 @@ import io.github.spearchucker667.veniceforge.core.data.entity.MessageEntity
 import io.github.spearchucker667.veniceforge.core.data.entity.MessageRole
 import io.github.spearchucker667.veniceforge.core.data.entity.MessageStatus
 import io.github.spearchucker667.veniceforge.core.data.repo.ChatRepository
+import io.github.spearchucker667.veniceforge.core.data.repo.ProfileRepository
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
 import io.github.spearchucker667.veniceforge.sdk.VeniceSdkConfig
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatClient
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatRequest
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatStreamChunk
-import io.github.spearchucker667.veniceforge.core.data.repo.ProfileRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -36,9 +36,6 @@ import kotlin.coroutines.EmptyCoroutineContext
 @RunWith(RobolectricTestRunner::class)
 class ChatViewModelTest {
 
-    // Map a CoroutineDispatcher onto a Java Executor that schedules tasks on
-    // the dispatcher. This lets Room's query/transaction executors run under
-    // the runTest scheduler, so `advanceUntilIdle` drains Room writes.
     private fun CoroutineDispatcher.asExecutor(): Executor =
         Executor { command -> dispatch(EmptyCoroutineContext) { command.run() } }
 
@@ -46,8 +43,16 @@ class ChatViewModelTest {
 
     @After fun tearDown() { db?.close(); db = null }
 
-    private class FakeChatClient(private val script: List<ChatStreamChunk>) : ChatClient(VeniceForgeSdk(VeniceSdkConfig())) {
-        override fun streamChat(apiKey: String, request: ChatRequest): Flow<ChatStreamChunk> = flowOf(*script.toTypedArray())
+    private class RecordingChatClient(private val responses: List<List<ChatStreamChunk>>) : ChatClient(VeniceForgeSdk(VeniceSdkConfig())) {
+        val recordedRequests = mutableListOf<ChatRequest>()
+        private var callCount = 0
+
+        override fun streamChat(apiKey: String, request: ChatRequest): Flow<ChatStreamChunk> {
+            recordedRequests.add(request)
+            val script = if (callCount < responses.size) responses[callCount] else emptyList()
+            callCount++
+            return flowOf(*script.toTypedArray())
+        }
     }
 
     @Test
@@ -67,12 +72,14 @@ class ChatViewModelTest {
             val profileRepo = ProfileRepository(syncedDb.profileDao())
             val profileId = profileRepo.ensureDefault()
             val chat = ChatRepository(syncedDb)
-            val client = FakeChatClient(
+            val client = RecordingChatClient(
                 listOf(
-                    ChatStreamChunk.Open(),
-                    ChatStreamChunk.Delta(0, "Hi "),
-                    ChatStreamChunk.Delta(0, "there"),
-                    ChatStreamChunk.Finish("stop"),
+                    listOf(
+                        ChatStreamChunk.Open(),
+                        ChatStreamChunk.Delta(0, "Hi "),
+                        ChatStreamChunk.Delta(0, "there"),
+                        ChatStreamChunk.Finish("stop"),
+                    )
                 )
             )
             val vm = ChatViewModel(
@@ -82,13 +89,11 @@ class ChatViewModelTest {
                 profileId = profileId,
                 initialModelId = "llama-3.3-70b",
             )
-            // Drain the init coroutine that creates the conversation.
             advanceUntilIdle()
 
             vm.submit("Hello")
             advanceUntilIdle()
 
-            // Wait for assistant message to be COMPLETED and accumulated.
             val finalState = vm.state.first { !it.isStreaming && it.messages.size >= 2 }
             val user = finalState.messages.first { it.role == MessageRole.USER }
             val assistant = finalState.messages.first { it.role == MessageRole.ASSISTANT }
@@ -98,6 +103,79 @@ class ChatViewModelTest {
             assertEquals(MessageStatus.COMPLETED, assistant.status)
             assertEquals("llama-3.3-70b", finalState.modelId)
             assertNull(finalState.error)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun `multi-turn chat constructs request with complete prior conversation context`() = runTest {
+        val roomDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(roomDispatcher)
+        try {
+            val syncedDb = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                AppDatabase::class.java,
+            )
+                .allowMainThreadQueries()
+                .setQueryExecutor(roomDispatcher.asExecutor())
+                .setTransactionExecutor(roomDispatcher.asExecutor())
+                .build()
+            db = syncedDb
+            val profileRepo = ProfileRepository(syncedDb.profileDao())
+            val profileId = profileRepo.ensureDefault()
+            val chat = ChatRepository(syncedDb)
+
+            val client = RecordingChatClient(
+                listOf(
+                    // Response for Turn 1
+                    listOf(
+                        ChatStreamChunk.Open(),
+                        ChatStreamChunk.Delta(0, "First answer"),
+                        ChatStreamChunk.Finish("stop"),
+                    ),
+                    // Response for Turn 2
+                    listOf(
+                        ChatStreamChunk.Open(),
+                        ChatStreamChunk.Delta(0, "Second answer"),
+                        ChatStreamChunk.Finish("stop"),
+                    )
+                )
+            )
+
+            val vm = ChatViewModel(
+                chatRepo = chat,
+                chatClient = client,
+                apiKeyProvider = { "test-key" },
+                profileId = profileId,
+                initialModelId = "llama-3.3-70b",
+            )
+            advanceUntilIdle()
+
+            // Turn 1
+            vm.submit("Turn one")
+            advanceUntilIdle()
+
+            assertEquals(1, client.recordedRequests.size)
+            val req1 = client.recordedRequests[0]
+            assertEquals(1, req1.messages.size)
+            assertEquals("user", req1.messages[0].role)
+            assertEquals("Turn one", req1.messages[0].content)
+
+            // Turn 2
+            vm.submit("Turn two")
+            advanceUntilIdle()
+
+            assertEquals(2, client.recordedRequests.size)
+            val req2 = client.recordedRequests[1]
+            // Must contain: user(Turn one), assistant(First answer), user(Turn two)
+            assertEquals(3, req2.messages.size)
+            assertEquals("user", req2.messages[0].role)
+            assertEquals("Turn one", req2.messages[0].content)
+            assertEquals("assistant", req2.messages[1].role)
+            assertEquals("First answer", req2.messages[1].content)
+            assertEquals("user", req2.messages[2].role)
+            assertEquals("Turn two", req2.messages[2].content)
         } finally {
             Dispatchers.resetMain()
         }
@@ -122,8 +200,6 @@ class ChatViewModelTest {
             val chat = ChatRepository(syncedDb)
             val convDao = syncedDb.conversationDao()
 
-            // Seed two conversations; the "recent" one already holds a user message so
-            // we can detect which conversation the ViewModel picked from the visible state.
             val older = chat.createConversation(profileId, "llama-3.3-70b", title = "older")
             convDao.update(
                 convDao.findById(profileId, older)!!.copy(updatedAt = 1_000L, lastOpenedAt = 1_000L),
@@ -143,7 +219,7 @@ class ChatViewModelTest {
                 ),
             )
 
-            val client = FakeChatClient(emptyList())
+            val client = RecordingChatClient(emptyList())
             val vm = ChatViewModel(
                 chatRepo = chat,
                 chatClient = client,
@@ -153,11 +229,6 @@ class ChatViewModelTest {
             )
             advanceUntilIdle()
 
-            // Most-recent-by-updatedAt must be the active conversation: the seeded
-            // user message should appear in the visible state. If the ViewModel
-            // instead mints a fresh conversation, the state stays empty and the
-            // timeout fires (or the predicate never matches because the new
-            // conversation has no messages).
             val messages = withTimeout(2_000) {
                 vm.state.first { it.messages.any { m -> m.text == "prior-prompt" } }.messages
             }
@@ -165,7 +236,6 @@ class ChatViewModelTest {
             assertEquals("prior-prompt", messages[0].text)
             assertEquals(MessageRole.USER, messages[0].role)
 
-            // The DB must not have grown: only the two seeded conversations remain.
             val conversations = chat.observeConversations(profileId).first()
             assertEquals(2, conversations.size)
             assertEquals(recent, conversations.first().id)
@@ -174,6 +244,3 @@ class ChatViewModelTest {
         }
     }
 }
-
-
-

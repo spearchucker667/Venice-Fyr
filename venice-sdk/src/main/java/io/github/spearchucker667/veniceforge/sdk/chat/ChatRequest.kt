@@ -1,13 +1,41 @@
 package io.github.spearchucker667.veniceforge.sdk.chat
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
+/**
+ * Message object within a Venice /chat/completions request or response.
+ */
 @Serializable
 data class ChatMessage(
     val role: String,
-    val content: String,
+    val content: String? = null,
     @SerialName("name") val name: String? = null,
+    @SerialName("tool_calls") val toolCalls: List<ToolCall>? = null,
+    @SerialName("tool_call_id") val toolCallId: String? = null,
+) {
+    companion object {
+        fun user(content: String, name: String? = null) = ChatMessage("user", content, name)
+        fun assistant(content: String?, toolCalls: List<ToolCall>? = null) = ChatMessage("assistant", content, null, toolCalls)
+        fun system(content: String, name: String? = null) = ChatMessage("system", content, name)
+        fun tool(toolCallId: String, content: String) = ChatMessage(role = "tool", content = content, toolCallId = toolCallId)
+    }
+}
+
+@Serializable
+data class ToolCall(
+    val id: String,
+    val type: String = "function",
+    val function: FunctionCall,
+)
+
+@Serializable
+data class FunctionCall(
+    val name: String,
+    val arguments: String,
 )
 
 @Serializable
@@ -20,21 +48,42 @@ data class ToolSpec(
 data class ToolFunction(
     val name: String,
     val description: String? = null,
-    val parameters: kotlinx.serialization.json.JsonElement? = null,
+    val parameters: JsonElement? = null,
 )
 
+/**
+ * Request payload for POST /chat/completions.
+ */
 @Serializable
 data class ChatRequest(
     val model: String,
     val messages: List<ChatMessage>,
     val stream: Boolean = true,
+    val temperature: Double? = null,
+    @SerialName("top_p") val topP: Double? = null,
+    @SerialName("max_tokens") val maxTokens: Int? = null,
+    @SerialName("max_completion_tokens") val maxCompletionTokens: Int? = null,
     val tools: List<ToolSpec>? = null,
     @SerialName("venice_parameters") val veniceParameters: VeniceParameters? = null,
 )
 
+/**
+ * Venice-specific operational parameters passed inside `venice_parameters`.
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class VeniceParameters(
-    val enable_web_search: Boolean? = null,
-    @SerialName("safe_mode") val safeMode: Boolean? = null,
-    // Preserve explicit safe_mode=false when caller passed it. Never drop.
+    @SerialName("enable_web_search") val enableWebSearch: String? = null, // "auto", "on", "off"
+    @SerialName("enable_web_scraping") val enableWebScraping: Boolean? = null,
+    @SerialName("enable_web_citations") val enableWebCitations: Boolean? = null,
+    @SerialName("enable_x_search") val enableXSearch: Boolean? = null,
+    @SerialName("character_slug") val characterSlug: String? = null,
+    @SerialName("include_venice_system_prompt") val includeVeniceSystemPrompt: Boolean? = null,
+    @SerialName("strip_thinking_response") val stripThinkingResponse: Boolean? = null,
+    @SerialName("disable_thinking") val disableThinking: Boolean? = null,
+    @SerialName("enable_e2ee") val enableE2ee: Boolean? = null,
+    @SerialName("include_search_results_in_stream") val includeSearchResultsInStream: Boolean? = null,
+    @SerialName("safe_mode")
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val safeMode: Boolean? = null,
 )

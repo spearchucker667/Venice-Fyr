@@ -7,14 +7,14 @@ Status meanings: **Foundation** = a real Android primitive is present; **Scaffol
 | `chat` | Chat | Foundation | Streaming SSE across `/chat/completions`, run/agent modes, profile-scoped persistence. Capabilities-driven model picker. Tools, attachments, projects, and agent approvals are ported in later milestones. |
 | `character-chats` | Character Chats | Scaffolded | Hosted/local cards, isolated identity, greetings, personas, lorebooks, scene generation |
 | `history` | History | Scaffolded | Room persistence, folders, lock/import/export/recovery |
-| `image` | Image Studio | Scaffolded | Generate/edit/multi-edit/background-remove/upscale with runtime capability gating |
+| `image` | Image Studio | Foundation | Generate/edit with runtime capability gating, binary payload memory optimizations, SAF photo picker, ImageViewModel & ImageScreen |
 | `media` | Media Studio | Scaffolded | Content-addressed media store, gallery, compare, lineage, Save As, manifest export |
 | `image-inspector` | Image Inspector | Scaffolded | Photo Picker/SAF import, bounded decode, vision analysis, prompt reconstruction |
 | `prompts` | Prompts | Scaffolded | Scoped prompt library, tags, immutable versions |
 | `scenes` | Scene Composer | Scaffolded | Touch canvas, prompts/media/models, persisted graph |
-| `audio` | Audio Studio | Scaffolded | TTS, Media3 playback, export |
+| `audio` | Audio Studio | Foundation (SDK) | SDK client for `/audio/speech`, voices; Media3 UI playback planned |
 | `music` | Music Studio | Scaffolded | Quote/queue/retrieve/complete, durable jobs |
-| `video` | Video Studio | Scaffolded | Text/image-to-video, queue stages, durable download/export |
+| `video` | Video Studio | Foundation (SDK) | SDK client for `/video/queue`, `/video/retrieve`, `/video/complete` with stream/JSON discrimination; UI planned |
 | `embeddings` | Embeddings | Scaffolded | Vector requests/inspection |
 | `search` | Research | Scaffolded | Venice/Jina search + scrape + synthesis + citations + saved sessions |
 | `characters` | Characters | Scaffolded | Hosted/local libraries, image cache, card import/export |

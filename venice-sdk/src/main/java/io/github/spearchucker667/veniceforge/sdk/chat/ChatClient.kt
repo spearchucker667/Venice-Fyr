@@ -10,6 +10,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.job
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -36,85 +37,116 @@ open class ChatClient(private val sdk: VeniceForgeSdk) {
             .build()
 
         val call = sdk.httpClient().newCall(httpReq)
-        val cancellationHook = trySend(ChatStreamChunk.Open()).isSuccess  // signal stream opened
+        val cancelHandle = coroutineContext.job.invokeOnCompletion { cause ->
+            if (cause is CancellationException && !call.isCanceled()) {
+                runCatching { call.cancel() }
+            }
+        }
+        trySend(ChatStreamChunk.Open()) // signal stream opened
+
+        var hasEmittedTerminal = false
 
         try {
             call.execute().use { response ->
                 if (!response.isSuccessful) {
-                    val msg = response.body?.string().orEmpty()
-                    trySend(ChatStreamChunk.Error(response.code, msg)).isSuccess
+                    val msg = response.body.string()
+                    trySend(ChatStreamChunk.Error(response.code, msg))
+                    hasEmittedTerminal = true
                     close()
                     return@callbackFlow
                 }
-                val source = response.body?.byteStream()
-                    ?: throw VeniceSdkException.Protocol("Empty response body")
+                val source = response.body.byteStream()
                 val parser = SseLineParser(source.bufferedReader())
                 while (true) {
-                    // Cooperative cancellation: ensureActive + yield between parser
-                    // iterations gives consumer cancellation a chance to short-circuit
-                    // before the next blocking readLine, so awaitClose fires promptly
-                    // and the underlying OkHttp Call is canceled.
                     coroutineContext.ensureActive()
                     yield()
                     val payload = parser.nextData() ?: break
                     if (payload == "[DONE]") break
-                    val chunk = parseChunk(payload)
-                    trySend(chunk).isSuccess
+
+                    val chunks = parseChunks(payload)
+                    for (chunk in chunks) {
+                        trySend(chunk)
+                        if (chunk is ChatStreamChunk.Finish) {
+                            hasEmittedTerminal = true
+                        } else if (chunk is ChatStreamChunk.Error) {
+                            hasEmittedTerminal = true
+                        }
+                    }
                 }
-                trySend(ChatStreamChunk.Finish(reason = "stop"))
+                // Enforce exactly one terminal completion event per successful stream
+                if (!hasEmittedTerminal) {
+                    trySend(ChatStreamChunk.Finish(reason = "stop"))
+                    hasEmittedTerminal = true
+                }
                 close()
             }
         } catch (e: CancellationException) {
-            // Treat cancellation like a normal end-of-stream: emit nothing more and
-            // let awaitClose run, so the OkHttp Call is canceled promptly. The flow
-            // terminates from the consumer side as soon as collect() observes its own
-            // CancellationException.
+            // Cancellation terminates the flow promptly; invokeOnCompletion cancels the OkHttp Call
         } catch (e: Throwable) {
-            trySend(ChatStreamChunk.Error(code = null, message = e.message ?: e::class.simpleName.orEmpty()))
+            if (!call.isCanceled() && !hasEmittedTerminal) {
+                trySend(ChatStreamChunk.Error(code = null, message = e.message ?: e::class.simpleName.orEmpty()))
+            }
             close(e)
         }
 
         awaitClose {
-            if (!call.isCanceled()) runCatching { call.cancel() }
+            cancelHandle.dispose()
+            if (!call.isCanceled()) {
+                runCatching { call.cancel() }
+            }
         }
     }.flowOn(Dispatchers.IO)
 
-    private fun parseChunk(payload: String): ChatStreamChunk {
+    private fun parseChunks(payload: String): List<ChatStreamChunk> {
         val obj = runCatching { json.parseToJsonElement(payload).jsonObject }.getOrNull()
-            ?: return ChatStreamChunk.Error(null, "invalid SSE JSON: $payload")
+            ?: return listOf(ChatStreamChunk.Error(null, "invalid SSE JSON: $payload"))
+
         val choices = obj["choices"]
         if (choices !is JsonArray) {
             val errObj = obj["error"]
             if (errObj is JsonObject) {
                 val msg = (errObj["message"] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: "stream error"
                 val code = (errObj["code"] as? JsonPrimitive)?.content?.toIntOrNull()
-                return ChatStreamChunk.Error(code, msg)
+                return listOf(ChatStreamChunk.Error(code, msg))
             }
-            return ChatStreamChunk.Error(null, payload)
+            return listOf(ChatStreamChunk.Error(null, payload))
         }
-        val first = choices.firstOrNull() as? JsonObject ?: return ChatStreamChunk.Error(null, payload)
+
+        val first = choices.firstOrNull() as? JsonObject ?: return listOf(ChatStreamChunk.Error(null, payload))
         val index = (first["index"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
         val delta = first["delta"] as? JsonObject
+
+        val emitted = mutableListOf<ChatStreamChunk>()
+
         if (delta != null) {
-            val text = (delta["content"] as? JsonPrimitive)?.takeIf { it.isString }?.content
             val toolCalls = delta["tool_calls"] as? JsonArray
             if (toolCalls != null && toolCalls.isNotEmpty()) {
-                // Single tool_call deltas from the desktop / Venice `/chat/completions` look like:
-                // { "index": 0, "id": "...", "function": { "name": "...", "arguments": "..." } }
-                val tc = toolCalls.first() as JsonObject
-                val tcIndex = (tc["index"] as? JsonPrimitive)?.content?.toIntOrNull() ?: index
-                val id = (tc["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content
-                val fn = tc["function"] as? JsonObject
-                val name = (fn?.get("name") as? JsonPrimitive)?.takeIf { it.isString }?.content
-                val args = (fn?.get("arguments") as? JsonPrimitive)?.takeIf { it.isString }?.content
-                return ChatStreamChunk.ToolCallDelta(tcIndex, id, name, args)
+                for (tcElem in toolCalls) {
+                    val tc = tcElem as? JsonObject ?: continue
+                    val tcIndex = (tc["index"] as? JsonPrimitive)?.content?.toIntOrNull() ?: index
+                    val id = (tc["id"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                    val fn = tc["function"] as? JsonObject
+                    val name = (fn?.get("name") as? JsonPrimitive)?.takeIf { it.isString }?.content
+                    val args = (fn?.get("arguments") as? JsonPrimitive)?.takeIf { it.isString }?.content
+                    emitted.add(ChatStreamChunk.ToolCallDelta(tcIndex, id, name, args))
+                }
             }
-            return ChatStreamChunk.Delta(index, text)
+
+            val text = (delta["content"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            if (text != null) {
+                emitted.add(ChatStreamChunk.Delta(index, text))
+            }
         }
+
         val finishReason = (first["finish_reason"] as? JsonPrimitive)?.takeIf { it.isString }?.content
         if (finishReason != null) {
-            return ChatStreamChunk.Finish(reason = finishReason)
+            emitted.add(ChatStreamChunk.Finish(reason = finishReason))
         }
-        return ChatStreamChunk.Error(null, "unhandled SSE payload: $payload")
+
+        if (emitted.isEmpty()) {
+            return listOf(ChatStreamChunk.Delta(index, null))
+        }
+
+        return emitted
     }
 }

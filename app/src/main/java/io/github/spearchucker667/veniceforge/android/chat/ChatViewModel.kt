@@ -23,7 +23,7 @@ import java.util.UUID
 
 data class ChatUiState(
     val messages: List<UiMessage> = emptyList(),
-    val modelId: String = "llama-3.3-70b",
+    val modelId: String? = null,
     val isStreaming: Boolean = false,
     val error: String? = null,
 )
@@ -38,17 +38,17 @@ data class UiMessage(
 /**
  * Orchestrates a single conversation against [ChatClient] with persistence via
  * [ChatRepository]. Keeps every persistence call scoped to [profileId] so the
- * active conversation cannot read or write another profile's state. The
- * streaming job is exposed via [cancel] so SSE consumption stops promptly and
- * downstream network/OkHttp resources are released via the SDK's awaitClose
- * hook.
+ * active conversation cannot read or write another profile's state.
+ *
+ * Implements full multi-turn conversation context, dynamic model selection,
+ * and cooperative cancellation.
  */
 class ChatViewModel(
     private val chatRepo: ChatRepository,
     private val chatClient: ChatClient,
     private val apiKeyProvider: () -> String?,
     private val profileId: String,
-    initialModelId: String = "llama-3.3-70b",
+    initialModelId: String? = null,
 ) : ViewModel() {
 
     private var conversationId: String? = null
@@ -58,17 +58,13 @@ class ChatViewModel(
 
     init {
         viewModelScope.launch {
-            // Resume the most-recent conversation for this profile (DAO sorts by
-            // updatedAt DESC) so prior-session messages aren't orphaned, only
-            // minting a fresh UUID when the profile has none yet.
             val existing = chatRepo.observeConversations(profileId).first()
             val convId = if (existing.isNotEmpty()) {
                 existing.first().id
             } else {
-                chatRepo.createConversation(profileId, initialModelId)
+                chatRepo.createConversation(profileId, initialModelId ?: "")
             }
             conversationId = convId
-            // Hydrate with persisted messages.
             chatRepo.observeMessages(profileId, convId).collect { msgs ->
                 _state.update {
                     it.copy(messages = msgs.map(::toUi))
@@ -81,13 +77,24 @@ class ChatViewModel(
         _state.update { it.copy(modelId = modelId) }
     }
 
+    fun setDefaultModelIfUnset(defaultModelId: String) {
+        _state.update {
+            if (it.modelId.isNullOrBlank()) it.copy(modelId = defaultModelId) else it
+        }
+    }
+
     fun submit(text: String) {
         val convId = conversationId ?: return
         val apiKey = apiKeyProvider() ?: run {
-            _state.update { it.copy(error = "No API key") }
+            _state.update { it.copy(error = "No API key loaded") }
             return
         }
         val modelId = _state.value.modelId
+        if (modelId.isNullOrBlank()) {
+            _state.update { it.copy(error = "No model selected. Please select a model.") }
+            return
+        }
+
         val now = System.currentTimeMillis()
         val userMsg = MessageEntity(
             id = UUID.randomUUID().toString(),
@@ -114,14 +121,32 @@ class ChatViewModel(
             createdAt = now,
             updatedAt = now,
         )
+
         viewModelScope.launch {
+            // Load prior conversation history to construct multi-turn request context
+            val priorMessages = chatRepo.observeMessages(profileId, convId).first()
+            val contextMessages = priorMessages
+                .filter { it.status == MessageStatus.COMPLETED && it.textContent.isNotBlank() }
+                .map { entity ->
+                    val roleStr = when (entity.role) {
+                        MessageRole.USER -> "user"
+                        MessageRole.ASSISTANT -> "assistant"
+                        MessageRole.SYSTEM -> "system"
+                        MessageRole.TOOL -> "tool"
+                    }
+                    ChatMessage(role = roleStr, content = entity.textContent)
+                }
+                .plus(ChatMessage.user(text))
+
             chatRepo.appendMessage(profileId, convId, userMsg)
             chatRepo.appendMessage(profileId, convId, assistantMsg)
 
             val req = ChatRequest(
                 model = modelId,
-                messages = listOf(ChatMessage(role = "user", content = text)),
+                messages = contextMessages,
+                stream = true,
             )
+
             streamJob = launch {
                 val accumulator = ChatStreamAccumulator()
                 chatClient.streamChat(apiKey, req).collect { chunk ->
@@ -134,7 +159,7 @@ class ChatViewModel(
                                 text = accumulator.snapshot().text,
                                 status = MessageStatus.STREAMING,
                             )
-                            _state.update { it.copy(isStreaming = true) }
+                            _state.update { it.copy(isStreaming = true, error = null) }
                         }
                         is ChatStreamChunk.Finish -> {
                             chatRepo.updateAssistantText(
@@ -154,7 +179,7 @@ class ChatViewModel(
                             )
                             _state.update { it.copy(isStreaming = false, error = chunk.message) }
                         }
-                        is ChatStreamChunk.Open -> Unit  // stream opened; nothing to persist
+                        is ChatStreamChunk.Open -> Unit
                     }
                 }
             }
@@ -162,7 +187,7 @@ class ChatViewModel(
     }
 
     fun cancel() {
-        streamJob?.cancel()  // propagates to ChatClient's awaitClose { call.cancel() }
+        streamJob?.cancel()
         streamJob = null
         _state.update { it.copy(isStreaming = false) }
     }

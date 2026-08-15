@@ -45,7 +45,7 @@ fun ChatScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.chat_model_picker_label))
             OutlinedButton(onClick = { modelMenuOpen = true }) {
-                Text(state.modelId)
+                Text(state.modelId ?: stringResource(R.string.chat_select_model))
             }
             DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
                 if (availableModels.isEmpty()) {
@@ -110,7 +110,7 @@ fun ChatScreen(
                 enabled = !state.isStreaming,
             )
             TextButton(
-                enabled = input.isNotBlank() && !state.isStreaming,
+                enabled = input.isNotBlank() && !state.isStreaming && !state.modelId.isNullOrBlank(),
                 onClick = {
                     viewModel.submit(input)
                     input = ""

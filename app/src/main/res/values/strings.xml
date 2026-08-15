@@ -5,6 +5,10 @@
     <string name="chat_send">Send</string>
     <string name="chat_cancel">Cancel</string>
     <string name="chat_model_picker_label">Model</string>
+    <string name="chat_select_model">Select model…</string>
+    <string name="chat_loading_models">Loading models…</string>
     <string name="chat_no_models">No models loaded. Go to Settings.</string>
-    <string name="chat_no_api_key">No API key saved. Go to Settings.</string>
+    <string name="chat_no_api_key">No API key saved. Go to Settings to enter your Venice API key.</string>
+    <string name="settings_retry">Retry</string>
+    <string name="settings_load_models_error">Model discovery failed</string>
 </resources>

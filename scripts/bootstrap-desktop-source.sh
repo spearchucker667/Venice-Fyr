@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="${VENICE_FYR_ROOT:-/Users/super_user/Projects/Venice Fyr}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${VENICE_FYR_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 ANDROID_ROOT="${VENICE_ANDROID_ROOT:-$PROJECT_ROOT}"
 SOURCE_ROOT="${VENICE_FORGE_SOURCE_DIR:-$PROJECT_ROOT/.source/Venice_Forge-desktop}"
 REMOTE="${VENICE_FORGE_REMOTE:-https://github.com/spearchucker667/Venice_Forge.git}"
@@ -27,7 +28,9 @@ if [ ! -d "$SOURCE_ROOT/.git" ]; then
   git clone --branch "$BRANCH" --single-branch "$REMOTE" "$SOURCE_ROOT"
 else
   actual_origin="$(git -C "$SOURCE_ROOT" remote get-url origin 2>/dev/null || true)"
-  [ "$actual_origin" = "$REMOTE" ] || fail "Unexpected origin for source mirror: $actual_origin (expected $REMOTE)"
+  normalized_actual="${actual_origin%.git}"
+  normalized_expected="${REMOTE%.git}"
+  [ "$normalized_actual" = "$normalized_expected" ] || fail "Unexpected origin for source mirror: $actual_origin (expected $REMOTE)"
 
   if [ -n "$(git -C "$SOURCE_ROOT" status --porcelain --untracked-files=normal)" ]; then
     fail "Desktop source mirror has local changes. Preserve/review them before refresh: $SOURCE_ROOT"
@@ -36,7 +39,9 @@ else
   printf 'Refreshing Venice Forge desktop source...\n'
   git -C "$SOURCE_ROOT" fetch --prune origin "$BRANCH"
   git -C "$SOURCE_ROOT" checkout "$BRANCH" >/dev/null 2>&1
-  git -C "$SOURCE_ROOT" reset --hard "origin/$BRANCH" >/dev/null
+  if ! git -C "$SOURCE_ROOT" merge --ff-only "origin/$BRANCH" >/dev/null 2>&1; then
+    fail "Could not fast-forward desktop source mirror. Manual intervention required: $SOURCE_ROOT"
+  fi
 fi
 
 head_sha="$(git -C "$SOURCE_ROOT" rev-parse HEAD)"

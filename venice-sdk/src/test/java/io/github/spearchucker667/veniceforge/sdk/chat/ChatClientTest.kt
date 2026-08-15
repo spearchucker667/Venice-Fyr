@@ -21,6 +21,7 @@ import okio.BufferedSource
 import okio.Source
 import okio.Timeout
 import okio.buffer
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -64,6 +65,80 @@ class ChatClientTest {
     }
 
     @Test
+    fun `emits exactly one terminal finish event when finish_reason is followed by DONE`() = runTest {
+        val sse = """
+            data: {"choices":[{"index":0,"delta":{"content":"Hello"}}]}
+            data: {"choices":[{"index":0,"finish_reason":"stop"}]}
+            data: [DONE]
+        """.trimIndent() + "\n\n"
+
+        val chunks = client(sse)
+            .streamChat(
+                apiKey = "test-key",
+                request = ChatRequest(model = "test-model", messages = listOf(ChatMessage.user("hi"))),
+            )
+            .toList()
+
+        val finishEvents = chunks.filterIsInstance<ChatStreamChunk.Finish>()
+        assertEquals(1, finishEvents.size)
+        assertEquals("stop", finishEvents.first().reason)
+    }
+
+    @Test
+    fun `parses and preserves multiple tool calls in a single SSE chunk`() = runTest {
+        val sse = """
+            data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"get_weather","arguments":"{\"loc\":"}},{"index":1,"id":"call_2","function":{"name":"get_time","arguments":"{}"}}]}}]}
+            data: {"choices":[{"index":0,"finish_reason":"tool_calls"}]}
+            data: [DONE]
+        """.trimIndent() + "\n\n"
+
+        val chunks = client(sse)
+            .streamChat(
+                apiKey = "test-key",
+                request = ChatRequest(model = "test-model", messages = listOf(ChatMessage.user("hi"))),
+            )
+            .toList()
+
+        val toolCalls = chunks.filterIsInstance<ChatStreamChunk.ToolCallDelta>()
+        assertEquals(2, toolCalls.size)
+        assertEquals(0, toolCalls[0].index)
+        assertEquals("call_1", toolCalls[0].callId)
+        assertEquals("get_weather", toolCalls[0].name)
+        assertEquals("{\"loc\":", toolCalls[0].argumentsFragment)
+
+        assertEquals(1, toolCalls[1].index)
+        assertEquals("call_2", toolCalls[1].callId)
+        assertEquals("get_time", toolCalls[1].name)
+        assertEquals("{}", toolCalls[1].argumentsFragment)
+
+        val finishEvents = chunks.filterIsInstance<ChatStreamChunk.Finish>()
+        assertEquals(1, finishEvents.size)
+        assertEquals("tool_calls", finishEvents.first().reason)
+    }
+
+    @Test
+    fun `stream-side provider error emits Error chunk without duplicate success finish`() = runTest {
+        val sse = """
+            data: {"error":{"message":"Model overloaded","code":429}}
+        """.trimIndent() + "\n\n"
+
+        val chunks = client(sse)
+            .streamChat(
+                apiKey = "test-key",
+                request = ChatRequest(model = "test-model", messages = listOf(ChatMessage.user("hi"))),
+            )
+            .toList()
+
+        val errors = chunks.filterIsInstance<ChatStreamChunk.Error>()
+        assertEquals(1, errors.size)
+        assertEquals("Model overloaded", errors.first().message)
+        assertEquals(429, errors.first().code)
+
+        val finishEvents = chunks.filterIsInstance<ChatStreamChunk.Finish>()
+        assertEquals(0, finishEvents.size)
+    }
+
+    @Test
     fun `cancel propagates to OkHttp call within deadline`() = runTest {
         val callRef = AtomicReference<Call?>(null)
         val chunk1 = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n\n".toByteArray()
@@ -79,9 +154,6 @@ class ChatClientTest {
                     sink.write(chunk1)
                     return chunk1.size.toLong()
                 }
-                // Stall the body so the only way out is via cooperative cancellation:
-                // the producer must observe the consumer's cancel and forward it into
-                // OkHttp call.cancel() through awaitClose.
                 try {
                     Thread.sleep(60_000)
                 } catch (ie: InterruptedException) {
@@ -114,7 +186,6 @@ class ChatClientTest {
         val client = ChatClient(sdk)
 
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            // Swallow CancellationException: cancel() throws and we expect it.
             try {
                 client.streamChat(
                     apiKey = "test-key",
@@ -127,16 +198,11 @@ class ChatClientTest {
                 // expected once the flow is canceled
             }
         }
-        // Give the producer a chance to read the first chunk and enter the next iteration
-        // before we cancel; the inter-iteration suspension point is what delivers the
-        // cancellation back into awaitClose.
         advanceUntilIdle()
 
         job.cancel()
         advanceUntilIdle()
 
-        // Real-time poll for cancellation to propagate: awaitClose fires only after the
-        // producer observes the consumer's cancellation, then call.cancel() runs.
         val deadline = System.currentTimeMillis() + 3_000
         while (System.currentTimeMillis() < deadline) {
             val c = callRef.get()
