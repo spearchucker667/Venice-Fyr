@@ -5,7 +5,7 @@ This file maps general repository/community documentation. Port-specific archite
 ## Root/community documents
 
 - `README.md` — project landing page
-- `LICENSE` — Apache License 2.0 candidate
+- `LICENSE` — Apache License 2.0
 - `NOTICE` — project/third-party notice
 - `LEGAL.md` — legal/project relationship notes
 - `PRIVACY.md` — privacy model
@@ -24,7 +24,7 @@ This file maps general repository/community documentation. Port-specific archite
 - `.github/ISSUE_TEMPLATE/documentation.yml`
 - `.github/ISSUE_TEMPLATE/config.yml`
 
-These files are candidates and must be reviewed against repository settings before adoption.
+These community configuration files govern issue tracking, pull requests, and code ownership.
 
 ## Guides
 

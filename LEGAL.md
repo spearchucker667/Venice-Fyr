@@ -5,9 +5,9 @@
 
 ## License
 
-The candidate repository license is the **Apache License 2.0**. The full license text is in [`LICENSE`](LICENSE).
+The repository license is the **Apache License 2.0**. The full license text is in [`LICENSE`](LICENSE).
 
-Apache-2.0 is proposed for Venice Fyr because the repository contains both an application and a reusable SDK/library boundary. In addition to permissive redistribution terms, Apache-2.0 includes an explicit contributor patent license.
+Apache-2.0 is adopted for Venice Fyr because the repository contains both an application and a reusable SDK/library boundary. In addition to permissive redistribution terms, Apache-2.0 includes an explicit contributor patent license.
 
 If the maintainer chooses a different license, update all of the following together:
 
