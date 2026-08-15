@@ -23,11 +23,15 @@ class VeniceForgeSdk(
     private val httpClient: OkHttpClient = OkHttpClient(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val baseUrl = config.baseUrl.toHttpUrl()
+    private val _baseUrl = config.baseUrl.toHttpUrl()
+
+    internal fun baseUrl() = _baseUrl
+    internal fun userAgent() = config.userAgent
+    internal fun httpClient() = httpClient
 
     suspend fun listModels(apiKey: String, type: String = "all"): List<VeniceModel> = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "apiKey must not be blank" }
-        val url = baseUrl.newBuilder()
+        val url = _baseUrl.newBuilder()
             .addPathSegment("models")
             .addQueryParameter("type", type)
             .build()
@@ -67,7 +71,7 @@ class VeniceForgeSdk(
      */
     internal suspend fun getRaw(path: String, apiKey: String): String = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "apiKey must not be blank" }
-        val url = baseUrl.newBuilder()
+        val url = _baseUrl.newBuilder()
             .addPathSegments(path.trimStart('/'))
             .build()
         val request = Request.Builder()
