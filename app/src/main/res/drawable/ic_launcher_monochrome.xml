@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Monochrome Light Beam -->
+    <path
+        android:fillAlpha="0.6"
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,40 L84,28 L84,56 L54,44 Z" />
+
+    <!-- Tower Base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,76h36v4h-36z" />
+
+    <!-- Tower Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,50h24l-3,26h-18z" />
+
+    <!-- Lantern Room Gallery -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,48h32v3h-32z" />
+
+    <!-- Lantern Core Frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,38h8v10h-8z" />
+
+    <!-- Lantern Roof -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,38h28l-6,-8h-16z" />
+
+    <!-- Spire -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M53,26h2v4h-2z" />
+</vector>

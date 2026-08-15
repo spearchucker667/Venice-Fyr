@@ -42,7 +42,11 @@ Venice Fyr is an independently maintained client intended to interoperate with V
 
 Names such as “Venice”, “Venice AI”, model names, logos, service marks and related branding may be trademarks or other protected identifiers of their respective owners.
 
-Do not present this project as an official Venice.ai application unless the maintainer has explicit authorization to make that claim.
+Venice brand marks, guidelines, and Built in Venice badge assets are referenced from the official Venice.ai brand kit in accordance with Venice brand guidance. The project does not claim official endorsement, sponsorship, or corporate affiliation.
+
+## Third-party media and character artwork
+
+The repository includes a reference loading animation spritesheet based on `ayanami-rei.codex-pet`. Third-party character artwork remains subject to its respective copyright, trademark, and redistribution rights. Maintainers must verify redistribution rights before publishing binary packages to public distribution channels or app stores.
 
 ## API and service terms
 

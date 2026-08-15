@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Focused Beacon Light Beam -->
+    <path
+        android:fillAlpha="0.85"
+        android:fillColor="#3C8FDD"
+        android:pathData="M54,40 L84,28 L84,56 L54,44 Z" />
+
+    <!-- Light Source Core -->
+    <path
+        android:fillColor="#F7F5ED"
+        android:pathData="M54,42m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0" />
+
+    <!-- Tower Base -->
+    <path
+        android:fillColor="#29526C"
+        android:pathData="M36,76h36v4h-36z" />
+
+    <!-- Tower Body -->
+    <path
+        android:fillColor="#F7F5ED"
+        android:pathData="M42,50h24l-3,26h-18z" />
+
+    <!-- Tower Band Detail -->
+    <path
+        android:fillColor="#0E2942"
+        android:pathData="M44,60h20l-1,6h-18z" />
+
+    <!-- Lantern Room Gallery -->
+    <path
+        android:fillColor="#29526C"
+        android:pathData="M38,48h32v3h-32z" />
+
+    <!-- Lantern Room Glass Cage -->
+    <path
+        android:fillColor="#0E2942"
+        android:pathData="M42,38h24v10h-24z" />
+
+    <!-- Lantern Core Frame -->
+    <path
+        android:fillColor="#3C8FDD"
+        android:pathData="M50,38h8v10h-8z" />
+
+    <!-- Lantern Roof / Dome -->
+    <path
+        android:fillColor="#F7F5ED"
+        android:pathData="M40,38h28l-6,-8h-16z" />
+
+    <!-- Spire / Finial -->
+    <path
+        android:fillColor="#F7F5ED"
+        android:pathData="M53,26h2v4h-2z" />
+</vector>

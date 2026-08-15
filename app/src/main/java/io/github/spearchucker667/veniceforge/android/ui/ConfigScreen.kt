@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -24,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import io.github.spearchucker667.veniceforge.core.designsystem.CodexPetState
+import io.github.spearchucker667.veniceforge.core.designsystem.VeniceLoadingIndicator
+import io.github.spearchucker667.veniceforge.core.designsystem.VenicePetStatusIndicator
 import io.github.spearchucker667.veniceforge.core.security.SecureSecretStore
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
 import io.github.spearchucker667.veniceforge.sdk.VeniceModel
@@ -40,6 +42,7 @@ fun ConfigScreen(
     var apiKey by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("No API key loaded") }
     var loading by remember { mutableStateOf(false) }
+    var hasError by remember { mutableStateOf(false) }
     var models by remember { mutableStateOf<List<VeniceModel>>(emptyList()) }
 
     LaunchedEffect(Unit) {
@@ -47,6 +50,7 @@ fun ConfigScreen(
         if (!existing.isNullOrBlank()) {
             apiKey = existing
             status = "API key loaded from Android Keystore-backed storage"
+            hasError = false
         }
     }
 
@@ -75,6 +79,7 @@ fun ConfigScreen(
                     onClick = {
                         secureStore.saveApiKey(profileId, apiKey)
                         status = "Saved to Keystore-backed storage"
+                        hasError = false
                     },
                 ) { Text("Save") }
                 OutlinedButton(
@@ -83,21 +88,25 @@ fun ConfigScreen(
                         apiKey = ""
                         models = emptyList()
                         status = "API key removed"
+                        hasError = false
                     },
                 ) { Text("Remove") }
                 Button(
                     enabled = apiKey.isNotBlank() && !loading,
                     onClick = {
                         loading = true
+                        hasError = false
                         status = "Loading /models…"
                         scope.launch {
                             runCatching { sdk.listModels(apiKey) }
                                 .onSuccess {
                                     models = it
                                     status = "Loaded ${it.size} models"
+                                    hasError = false
                                 }
                                 .onFailure {
                                     status = "Model probe failed: ${it.message ?: it::class.simpleName}"
+                                    hasError = true
                                 }
                             loading = false
                         }
@@ -106,8 +115,20 @@ fun ConfigScreen(
             }
         }
         item {
-            if (loading) CircularProgressIndicator()
-            Text(status)
+            if (loading) {
+                VeniceLoadingIndicator(
+                    message = status,
+                    state = CodexPetState.ActiveTask,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                )
+            } else {
+                val state = if (hasError) CodexPetState.Failed else CodexPetState.Idle
+                VenicePetStatusIndicator(
+                    state = state,
+                    message = status,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                )
+            }
         }
         if (models.isNotEmpty()) {
             item { Text("Model catalog", fontWeight = FontWeight.SemiBold) }

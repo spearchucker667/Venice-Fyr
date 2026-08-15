@@ -8,11 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -24,13 +23,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import io.github.spearchucker667.veniceforge.android.R
+import io.github.spearchucker667.veniceforge.core.designsystem.CodexPetState
+import io.github.spearchucker667.veniceforge.core.designsystem.VenicePetStatusIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,16 +78,28 @@ fun ChatScreen(
         ) {
             items(state.messages, key = { it.id }) { msg ->
                 Column {
-                    Text(msg.role.name, style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+                    Text(msg.role.name, style = MaterialTheme.typography.labelSmall)
                     Text(msg.text)
                 }
             }
             if (state.isStreaming) {
-                item { Text("…") }
+                item {
+                    VenicePetStatusIndicator(
+                        state = CodexPetState.ActiveTask,
+                        message = "Generating response…",
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
             }
         }
 
-        state.error?.let { Text(it) }
+        state.error?.let { err ->
+            VenicePetStatusIndicator(
+                state = CodexPetState.Failed,
+                message = err,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
