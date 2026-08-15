@@ -12,6 +12,7 @@ import io.github.spearchucker667.veniceforge.sdk.chat.ChatClient
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatRequest
 import io.github.spearchucker667.veniceforge.sdk.chat.ChatStreamChunk
 import io.github.spearchucker667.veniceforge.core.data.repo.ProfileRepository
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -23,21 +24,25 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.Executor
+import kotlin.coroutines.EmptyCoroutineContext
 
 @RunWith(RobolectricTestRunner::class)
 class ChatViewModelTest {
 
-    private val db = Room.inMemoryDatabaseBuilder(
-        ApplicationProvider.getApplicationContext(),
-        AppDatabase::class.java,
-    ).allowMainThreadQueries().build()
+    // Map a CoroutineDispatcher onto a Java Executor that schedules tasks on
+    // the dispatcher. This lets Room's query/transaction executors run under
+    // the runTest scheduler, so `advanceUntilIdle` drains Room writes.
+    private fun CoroutineDispatcher.asExecutor(): Executor =
+        Executor { command -> dispatch(EmptyCoroutineContext) { command.run() } }
 
-    @After fun tearDown() { db.close() }
+    private var db: AppDatabase? = null
+
+    @After fun tearDown() { db?.close(); db = null }
 
     private class FakeChatClient(private val script: List<ChatStreamChunk>) : ChatClient(VeniceForgeSdk(VeniceSdkConfig())) {
         override fun streamChat(apiKey: String, request: ChatRequest): Flow<ChatStreamChunk> = flowOf(*script.toTypedArray())
@@ -45,11 +50,21 @@ class ChatViewModelTest {
 
     @Test
     fun `submit writes user message and accumulates assistant chunks`() = runTest {
-        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val roomDispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(roomDispatcher)
         try {
-            val profileRepo = ProfileRepository(db.profileDao())
+            val syncedDb = Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                AppDatabase::class.java,
+            )
+                .allowMainThreadQueries()
+                .setQueryExecutor(roomDispatcher.asExecutor())
+                .setTransactionExecutor(roomDispatcher.asExecutor())
+                .build()
+            db = syncedDb
+            val profileRepo = ProfileRepository(syncedDb.profileDao())
             val profileId = profileRepo.ensureDefault()
-            val chat = ChatRepository(db)
+            val chat = ChatRepository(syncedDb)
             val client = FakeChatClient(
                 listOf(
                     ChatStreamChunk.Open(),
@@ -86,3 +101,6 @@ class ChatViewModelTest {
         }
     }
 }
+
+
+
