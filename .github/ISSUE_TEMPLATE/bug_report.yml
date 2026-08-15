@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible Venice Fyr defect
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Remove API keys, authorization headers, private prompts, personal data, and other secrets before submitting.
+        For exploitable security vulnerabilities, stop and follow SECURITY.md instead of filing a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: App version, tag, or commit SHA.
+      placeholder: "0.1.0-alpha.1 / abc1234"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Pixel 9, Android 17 / API 37"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Build / Gradle / toolchain
+        - Chat / streaming
+        - Models / capabilities
+        - Data / Room / migration
+        - Security / credential storage
+        - UI / Compose
+        - Media
+        - Agent / tools
+        - SDK
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reliable reproduction.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Never include API keys, auth headers, private prompts, or personal data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I checked the feature-parity matrix where relevant.
+          required: true
+        - label: I removed credentials and private/sensitive data.
+          required: true
+        - label: This is not an undisclosed exploitable security vulnerability.
+          required: true

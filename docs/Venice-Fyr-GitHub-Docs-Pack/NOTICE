@@ -1,0 +1,16 @@
+Venice Fyr
+Copyright 2026 Venice Fyr contributors
+
+This product includes software developed by Venice Fyr contributors.
+
+Venice Fyr is an independent client project intended to interoperate with
+Venice AI. The project is not intended to imply sponsorship, endorsement,
+or ownership of Venice.ai trademarks, service marks, model names, or other
+third-party branding.
+
+Third-party libraries, APIs, models, media, and services remain subject to
+their respective licenses, notices, and terms.
+
+Before publishing a binary release, maintainers should review the resolved
+dependency graph and add any attribution or NOTICE material required by
+bundled third-party components.

@@ -1,0 +1,27 @@
+name: Documentation issue
+description: Report incorrect, stale, missing, or confusing documentation
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Document / location
+      placeholder: "README.md, docs/GETTING_STARTED.md, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Current implementation/source evidence
+      description: If the docs are stale, identify the code, command, spec, or API behavior that conflicts with them.
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Suggested correction

@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose an Android feature or parity improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Desired behavior
+      description: Describe the user-visible result rather than only an implementation idea.
+    validations:
+      required: true
+  - type: dropdown
+    id: parity
+    attributes:
+      label: Desktop parity
+      description: Does Venice Forge desktop already have this behavior?
+      options:
+        - "Yes"
+        - "Partially"
+        - "No"
+        - "Unknown"
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Relevant source/API references
+      description: Link the desktop feature, Venice API docs, endpoint, model capability, or prior issue if known.
+  - type: textarea
+    id: security
+    attributes:
+      label: Privacy / security / paid-operation considerations
+      description: Mention credentials, file access, profile data, approvals, provider cost, or permissions if relevant.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked the current feature-parity matrix.
+          required: true
+        - label: I searched existing issues.
+          required: true
