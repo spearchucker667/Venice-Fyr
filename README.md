@@ -3,7 +3,7 @@
 Native Android port foundation for Venice Forge `3.0.0-beta.2` — a native Kotlin/Jetpack Compose client and reusable SDK for Venice AI.
 
 <p align="center">
-  <img src="docs/assets/venice-fyr-banner.png" alt="Venice Fyr — native Android client and SDK for Venice AI" width="100%">
+  <img width="1800" height="620" alt="venice-fyr-readme-hero" src="https://github.com/user-attachments/assets/02ff7fcd-97b3-4c61-a93a-c81201e03d8e" />
 </p>
 
 <p align="center">
@@ -287,7 +287,3 @@ Third-party software and services remain subject to their own licenses and terms
 ## Project relationship
 
 Venice Fyr is an independently maintained client project built to interoperate with Venice AI. Product names, trademarks, service terms, generated-content policies, and upstream APIs remain the responsibility of their respective owners.
-
-<p align="center">
-  <img src="docs/assets/venice-fyr-mark.png" alt="Venice Fyr mark" width="96">
-</p>
