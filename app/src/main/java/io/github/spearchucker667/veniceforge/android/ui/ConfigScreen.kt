@@ -115,7 +115,8 @@ fun ConfigScreen(
                 Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Text(model.name ?: model.id, fontWeight = FontWeight.Medium)
                     Text(model.id)
-                    if (!model.description.isNullOrBlank()) Text(model.description)
+                    val description = model.description
+                    if (!description.isNullOrBlank()) Text(description)
                 }
             }
         }

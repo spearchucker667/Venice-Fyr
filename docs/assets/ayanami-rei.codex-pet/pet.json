@@ -1,0 +1,8 @@
+{
+  "id": "ayanami-rei",
+  "displayName": "Ayanami Rei",
+  "description": "A compact chibi desk pet inspired by a pale blue-haired anime girl holding a colorful good-luck fan.",
+  "spritesheetPath": "spritesheet.webp",
+  "spriteVersionNumber": 2,
+  "kind": "person"
+}
