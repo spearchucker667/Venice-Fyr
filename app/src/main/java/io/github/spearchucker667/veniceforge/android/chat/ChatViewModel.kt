@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -57,7 +58,15 @@ class ChatViewModel(
 
     init {
         viewModelScope.launch {
-            val convId = chatRepo.createConversation(profileId, initialModelId)
+            // Resume the most-recent conversation for this profile (DAO sorts by
+            // updatedAt DESC) so prior-session messages aren't orphaned, only
+            // minting a fresh UUID when the profile has none yet.
+            val existing = chatRepo.observeConversations(profileId).first()
+            val convId = if (existing.isNotEmpty()) {
+                existing.first().id
+            } else {
+                chatRepo.createConversation(profileId, initialModelId)
+            }
             conversationId = convId
             // Hydrate with persisted messages.
             chatRepo.observeMessages(profileId, convId).collect { msgs ->

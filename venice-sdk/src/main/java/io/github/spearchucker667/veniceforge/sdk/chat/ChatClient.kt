@@ -3,11 +3,14 @@ package io.github.spearchucker667.veniceforge.sdk.chat
 import io.github.spearchucker667.veniceforge.sdk.VeniceEndpoints
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
 import io.github.spearchucker667.veniceforge.sdk.VeniceSdkException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -47,6 +50,12 @@ open class ChatClient(private val sdk: VeniceForgeSdk) {
                     ?: throw VeniceSdkException.Protocol("Empty response body")
                 val parser = SseLineParser(source.bufferedReader())
                 while (true) {
+                    // Cooperative cancellation: ensureActive + yield between parser
+                    // iterations gives consumer cancellation a chance to short-circuit
+                    // before the next blocking readLine, so awaitClose fires promptly
+                    // and the underlying OkHttp Call is canceled.
+                    coroutineContext.ensureActive()
+                    yield()
                     val payload = parser.nextData() ?: break
                     if (payload == "[DONE]") break
                     val chunk = parseChunk(payload)
@@ -55,6 +64,11 @@ open class ChatClient(private val sdk: VeniceForgeSdk) {
                 trySend(ChatStreamChunk.Finish(reason = "stop"))
                 close()
             }
+        } catch (e: CancellationException) {
+            // Treat cancellation like a normal end-of-stream: emit nothing more and
+            // let awaitClose run, so the OkHttp Call is canceled promptly. The flow
+            // terminates from the consumer side as soon as collect() observes its own
+            // CancellationException.
         } catch (e: Throwable) {
             trySend(ChatStreamChunk.Error(code = null, message = e.message ?: e::class.simpleName.orEmpty()))
             close(e)
