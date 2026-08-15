@@ -4,7 +4,7 @@ Status meanings: **Foundation** = a real Android primitive is present; **Scaffol
 
 | Stable ID | Desktop area | Android now | Android target |
 |---|---|---|---|
-| `chat` | Chat | Scaffolded | Streaming SSE, agent/classical modes, tools, attachments, projects, model pinning, memory disclosure |
+| `chat` | Chat | Foundation | Streaming SSE across `/chat/completions`, run/agent modes, profile-scoped persistence. Capabilities-driven model picker. Tools, attachments, projects, and agent approvals are ported in later milestones. |
 | `character-chats` | Character Chats | Scaffolded | Hosted/local cards, isolated identity, greetings, personas, lorebooks, scene generation |
 | `history` | History | Scaffolded | Room persistence, folders, lock/import/export/recovery |
 | `image` | Image Studio | Scaffolded | Generate/edit/multi-edit/background-remove/upscale with runtime capability gating |

@@ -33,3 +33,10 @@ The dependency set intentionally favors stable releases. Re-verify versions befo
 The SHA above is the kickoff baseline, not a permanent pin. Each agent session must refresh the read-only desktop mirror from `https://github.com/spearchucker667/Venice_Forge.git` `main` using `scripts/bootstrap-desktop-source.sh`, then record/use the resulting `VENICE_FORGE_DESKTOP_HEAD` from `.local/desktop-source.env`. Current desktop `origin/main` wins over this historical kickoff SHA for parity behavior.
 
 Expected local mirror: `/Users/super_user/Projects/Venice Fyr/.source/Venice_Forge-desktop/`.
+
+## Milestone 1 — typed capabilities + SSE + Room v1 (2026-08-15)
+
+- Desktop HEAD at start: `bc5c17374ef4937f5837f5580d29a88bfab333ee`
+- New modules: `:core:data`
+- New dependencies: AndroidX Room 2.7.0 (`room-runtime`, `room-ktx`, `room-compiler`, `room-testing`); KSP 2.3.11; Robolectric 4.13; `kotlinx-coroutines-test` 1.11.0; `kotlinx-serialization` JSON 1.11.0; `org.jetbrains.kotlin.plugin.serialization` 2.3.21.
+- Behavior ported: `/models` typed metadata merging with `/models/traits` + `/models/compatibility_mapping`; `/chat/completions` SSE streaming with tool-call fragment reconstruction; Room schema v1 with profile scoping.
