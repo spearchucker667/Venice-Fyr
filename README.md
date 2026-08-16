@@ -55,6 +55,7 @@ This repository is built around:
 - Runtime Venice model/capability discovery rather than static model allowlists.
 - Cancellation-native chat SSE transport with explicit completion markers and structured transport errors.
 - Typed chat reasoning controls with reasoning streamed separately from answer text.
+- Durable, signature-validated, profile-scoped generated-image storage with Room metadata and restart restore.
 - Correct binary image edit/upscale contracts and typed queued audio/video lifecycle primitives.
 - A read-only desktop source mirror used for parity work.
 
@@ -152,6 +153,7 @@ Build the reusable SDK:
 ```
 
 For complete environment setup, see [Getting Started](docs/GETTING_STARTED.md).
+For the official local ARM64 emulator workflow and evidence harness, see [Android Emulator QA](docs/ANDROID_EMULATOR_QA.md).
 
 ---
 

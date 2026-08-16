@@ -82,6 +82,7 @@ fun VeniceForgeApp() {
     val data = remember { DataServices.create(context) }
     val chatRepo = data.chatRepository
     val profileRepo = data.profileRepository
+    val generatedMediaRepo = data.generatedMediaRepository
     val chatClient = remember(sdk) { ChatClient(sdk) }
     val capabilitiesRepo = remember(sdk) { CapabilitiesRepository(sdk) }
 
@@ -104,7 +105,7 @@ fun VeniceForgeApp() {
     }
 
     val imageViewModel = profileId?.let { pid ->
-        val factory = remember(pid, sdk, secureStore, context) {
+        val factory = remember(pid, sdk, secureStore, context, generatedMediaRepo) {
             ImageViewModelFactory(
                 imageClient = sdk.imageClient(),
                 apiKeyProvider = {
@@ -113,18 +114,25 @@ fun VeniceForgeApp() {
                 uriToBase64 = { uri ->
                     withContext(Dispatchers.IO) {
                         context.contentResolver.openInputStream(uri)?.use { stream ->
-                            val bytes = stream.readBytes()
+                            val bytes = stream.readBytesBounded(32 * 1024 * 1024)
                             android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
                         }
                     }
                 },
-                saveBytesToCache = { bytes ->
+                persistImage = { bytes, operation, modelId, prompt, mimeType ->
                     withContext(Dispatchers.IO) {
-                        val file = java.io.File(context.cacheDir, "venice_image_${System.currentTimeMillis()}.png")
-                        file.writeBytes(bytes)
-                        android.net.Uri.fromFile(file)
+                        val media = generatedMediaRepo.persistImage(
+                            profileId = pid,
+                            bytes = bytes,
+                            operation = operation,
+                            modelId = modelId,
+                            prompt = prompt,
+                            declaredMimeType = mimeType,
+                        )
+                        generatedMediaRepo.uriFor(media)
                     }
-                }
+                },
+                latestResultUri = generatedMediaRepo.observeLatestImageUri(pid),
             )
         }
         viewModel<ImageViewModel>(key = "image:$pid", factory = factory)
@@ -160,40 +168,51 @@ fun VeniceForgeApp() {
         drawerContent = {
             ModalDrawerSheet {
                 val isDark = isSystemInDarkTheme()
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                ) {
-                    Image(
-                        painter = painterResource(
-                            if (isDark) R.drawable.ic_venice_keys_off_white
-                            else R.drawable.ic_venice_keys_deep_blue,
-                        ),
-                        contentDescription = "Official Venice crossed keys",
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "Venice Forge Android",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-                HorizontalDivider()
-                FeatureGroup.entries.forEach { group ->
-                    Text(group.label, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-                    FeatureCatalog.all.filter { it.group == group }.forEach { feature ->
-                        NavigationDrawerItem(
-                            label = { Text(feature.label) },
-                            selected = selected.id == feature.id,
-                            onClick = {
-                                selectedId = feature.id
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                        )
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                        ) {
+                            Image(
+                                painter = painterResource(
+                                    if (isDark) R.drawable.ic_venice_keys_off_white
+                                    else R.drawable.ic_venice_keys_deep_blue,
+                                ),
+                                contentDescription = "Official Venice crossed keys",
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Venice Forge Android",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
                     }
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    item { HorizontalDivider() }
+                    FeatureGroup.entries.forEach { group ->
+                        item(key = "group:${group.name}") {
+                            Text(group.label, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                        }
+                        items(
+                            items = FeatureCatalog.all.filter { it.group == group },
+                            key = { feature -> feature.id },
+                        ) { feature ->
+                            NavigationDrawerItem(
+                                label = { Text(feature.label) },
+                                selected = selected.id == feature.id,
+                                onClick = {
+                                    selectedId = feature.id
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                            )
+                        }
+                        item(key = "divider:${group.name}") {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                    }
                 }
             }
         },
@@ -212,11 +231,19 @@ fun VeniceForgeApp() {
             },
         ) { padding ->
             if (selected.id == "settings") {
-                ConfigScreen(
-                    secureStore = secureStore,
-                    sdk = sdk,
-                    modifier = Modifier.padding(padding),
-                )
+                val pid = profileId
+                if (pid != null) {
+                    ConfigScreen(
+                        secureStore = secureStore,
+                        sdk = sdk,
+                        profileId = pid,
+                        modifier = Modifier.padding(padding),
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(padding).padding(20.dp)) {
+                        Text("Loading profile…")
+                    }
+                }
             } else if (selected.id == "chat") {
                 val vm = chatViewModel
                 if (vm != null) {
@@ -248,6 +275,20 @@ fun VeniceForgeApp() {
             }
         }
     }
+}
+
+private fun java.io.InputStream.readBytesBounded(maxBytes: Int): ByteArray {
+    val output = java.io.ByteArrayOutputStream(minOf(maxBytes, 64 * 1024))
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        total += count
+        require(total <= maxBytes) { "Selected image exceeds the $maxBytes byte limit" }
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
 }
 
 @Composable

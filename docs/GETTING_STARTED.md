@@ -48,7 +48,7 @@ sdkmanager --list_installed
 adb version
 ```
 
-If the command-line tools are installed through Homebrew on Apple Silicon, the exact SDK root may depend on the Homebrew prefix. Prefer environment discovery rather than hard-coded user-specific paths.
+The supported macOS QA setup uses one canonical SDK root at `$HOME/Library/Android/sdk`. Keep `ANDROID_HOME` and `ANDROID_SDK_ROOT` identical and put that root's command-line tools, platform tools, and emulator first on `PATH`.
 
 A machine-local `local.properties` may contain:
 
@@ -99,6 +99,13 @@ Full baseline validation:
 
 Instrumentation suites may require a connected device/emulator.
 
+For the supported ARM64 API 37 AVD, repeatable doctor, install, launch, navigation, screenshot, logcat, and instrumented-test commands, see [`ANDROID_EMULATOR_QA.md`](ANDROID_EMULATOR_QA.md):
+
+```bash
+./scripts/android-emulator-doctor.sh
+./scripts/android-emulator-qa.sh --headless
+```
+
 ## Desktop reference source
 
 The Android repo is the write target. Venice Forge desktop remains a separate read-only behavioral source.
@@ -120,7 +127,7 @@ Do not place real credentials in:
 - screenshots;
 - test fixtures.
 
-Use the application's supported secure credential flow.
+Use the application's supported secure credential flow. Venice Fyr accepts a Venice API key; normal Venice.ai account login is not supported. A stored key is never reloaded into the editable Settings field.
 
 ## Next steps
 

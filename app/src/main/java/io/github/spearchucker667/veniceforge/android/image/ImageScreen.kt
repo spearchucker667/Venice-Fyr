@@ -207,7 +207,7 @@ fun ImageScreen(
 
                 val decodedBitmap by produceState<android.graphics.Bitmap?>(null, resultUri) {
                     value = withContext(Dispatchers.IO) {
-                        runCatching { resultUri.path?.let(BitmapFactory::decodeFile) }.getOrNull()
+                        runCatching { resultUri.path?.let(::decodeBoundedBitmap) }.getOrNull()
                     }
                 }
 
@@ -224,4 +224,15 @@ fun ImageScreen(
             }
         }
     }
+}
+
+private fun decodeBoundedBitmap(path: String, maxDimension: Int = 2048): android.graphics.Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sampleSize = 1
+    while (bounds.outWidth / sampleSize > maxDimension || bounds.outHeight / sampleSize > maxDimension) {
+        sampleSize *= 2
+    }
+    return BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sampleSize })
 }

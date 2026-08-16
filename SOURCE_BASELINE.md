@@ -72,3 +72,11 @@ The dependency set intentionally favors stable releases. Re-verify versions befo
 - Upstream paths consulted: `swagger.yaml`; `agents.md`; `skill.md`; `api-reference/endpoint/{chat,image,video,audio}`; `guides/features/reasoning-models.mdx`; `guides/media/`; `overview/`; and `data/static-models.json`.
 - Contract corrections: binary image edit/multi-edit/upscale results, video JSON `COMPLETED`, typed chat reasoning controls/deltas, queued audio lifecycle, audio transcription/voice upload, video quote/transcription, and HTTP 402 classification.
 - Runtime discovery correction: `/models/traits` and `/models/compatibility_mapping` now receive each discovered valid modality instead of silently inheriting the server's text default.
+
+### 2026-08-15 Emulator and Durable Media Session
+
+- Venice Fyr starting HEAD: `3883970779ad1f0f69e0f528047650149936d98b`.
+- Venice API Docs HEAD: `6e69346b13695bd53ba33a1d34e7b28841e10f98` (Swagger `20260814.194349`; unchanged from the repository baseline).
+- Desktop parity HEAD: `bc5c17374ef4937f5837f5580d29a88bfab333ee`.
+- Upstream paths consulted: `swagger.yaml` image/model/authentication contracts; `agents.md`; `skill.md`; `api-reference/`; `guides/`; `overview/`; and `data/static-models.json`.
+- Product correction: completed generated images moved from cache-only process state to validated app-private files plus profile-scoped Room v2 metadata and latest-result restore. Venice request serialization did not change.

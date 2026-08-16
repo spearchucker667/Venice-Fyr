@@ -7,8 +7,8 @@ Status meanings: **Foundation** = a real Android primitive is present; **Scaffol
 | `chat` | Chat | Foundation | Cancellation-native SSE with strict terminal-state handling, structured HTTP failures, multiline parsing, separate reasoning deltas, and profile-scoped answer persistence. Non-streaming completions, multimodal content, full tools, reasoning persistence/UI, projects, and agent approvals remain incomplete. |
 | `character-chats` | Character Chats | Scaffolded | Hosted/local cards, isolated identity, greetings, personas, lorebooks, scene generation |
 | `history` | History | Scaffolded | Room persistence, folders, lock/import/export/recovery |
-| `image` | Image Studio | Foundation | Generate/edit with runtime capability gating, corrected binary edit responses, Photo Picker input, and ImageViewModel/ImageScreen. Durable media storage/export, multipart, multi-edit/background removal/styles UI remain incomplete. |
-| `media` | Media Studio | Scaffolded | Content-addressed media store, gallery, compare, lineage, Save As, manifest export |
+| `image` | Image Studio | Foundation | Generate/edit with runtime capability gating, corrected binary edit responses, Photo Picker input, validated app-private image files, profile-scoped Room metadata, and restart restore. SAF export, multipart, multi-edit/background removal/styles UI remain incomplete. |
+| `media` | Media Studio | Foundation (images) | Content-addressed profile-owned image storage and bounded metadata paging exist; gallery, compare, lineage, video/audio persistence, Save As, and manifest export remain incomplete. |
 | `image-inspector` | Image Inspector | Scaffolded | Photo Picker/SAF import, bounded decode, vision analysis, prompt reconstruction |
 | `prompts` | Prompts | Scaffolded | Scoped prompt library, tags, immutable versions |
 | `scenes` | Scene Composer | Scaffolded | Touch canvas, prompts/media/models, persisted graph |

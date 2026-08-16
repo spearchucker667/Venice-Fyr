@@ -13,6 +13,8 @@ The long-term product surface includes Venice AI chat, agents, image/video/audio
 
 Venice-backed features require appropriate provider credentials.
 
+Authentication is API-key only. Venice Fyr does not provide normal Venice.ai account login. Settings stores the key using Android Keystore-backed encryption and does not redisplay a stored key in the editable field.
+
 Repository architecture requires persistent credentials to remain in the application security layer rather than the reusable SDK.
 
 Never paste an API key into:
@@ -41,6 +43,8 @@ Large media features may consume significant bandwidth.
 The project is designed to use Android-scoped access rather than broad filesystem access.
 
 Where a document/media picker is used, grant access only to the content intended for that operation.
+
+Completed Image Studio results are stored in app-private durable storage with profile-scoped metadata, so the latest result can return after process restart. Clearing app data or deleting owned profile media removes this local content. Explicit gallery/export support is still incomplete.
 
 ## Generated content
 

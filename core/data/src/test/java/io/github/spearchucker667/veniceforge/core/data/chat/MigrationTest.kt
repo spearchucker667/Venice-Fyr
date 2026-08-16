@@ -24,7 +24,7 @@ class MigrationTest {
     )
 
     @Test
-    fun `v1 schema creates all expected tables`() {
+    fun `v1 schema migrates to generated media schema`() {
         helper.createDatabase(dbName, 1).use { db ->
             db.query("SELECT name FROM sqlite_master WHERE type='table'").use { cursor ->
                 val names = mutableSetOf<String>()
@@ -36,10 +36,15 @@ class MigrationTest {
                 check("message_tool_calls" in names)
             }
         }
+        helper.runMigrationsAndValidate(dbName, 2, true, AppDatabase.MIGRATION_1_2).use { db ->
+            db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='generated_media'").use { cursor ->
+                check(cursor.moveToFirst())
+            }
+        }
     }
 
     @Test
-    fun `AppDatabase can open v1`() {
+    fun `AppDatabase can open migrated v1`() {
         // Room 2.7.0's RoomDatabase extends neither Closeable nor AutoCloseable,
         // so stdlib `.use {}` doesn't resolve on it; instead open and close directly.
         Room.databaseBuilder(

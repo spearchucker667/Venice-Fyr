@@ -18,3 +18,4 @@ signing.properties
 *.aar
 .local/
 .source/
+artifacts/android-qa/

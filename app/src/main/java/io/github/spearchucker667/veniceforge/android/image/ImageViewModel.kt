@@ -7,11 +7,13 @@ import androidx.lifecycle.viewModelScope
 import io.github.spearchucker667.veniceforge.sdk.image.EditImageRequest
 import io.github.spearchucker667.veniceforge.sdk.image.GenerateImageRequest
 import io.github.spearchucker667.veniceforge.sdk.image.ImageClient
+import io.github.spearchucker667.veniceforge.core.data.entity.GeneratedMediaOperation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -28,12 +30,23 @@ class ImageViewModel(
     private val imageClient: ImageClient,
     private val apiKeyProvider: suspend () -> String?,
     private val uriToBase64: suspend (Uri) -> String?,
-    private val saveBytesToCache: suspend (ByteArray) -> Uri?,
+    private val persistImage: suspend (ByteArray, GeneratedMediaOperation, String, String, String?) -> Uri?,
+    latestResultUri: Flow<Uri?>,
 ) : ViewModel() {
     private var operationJob: Job? = null
 
     private val _uiState = MutableStateFlow(ImageUiState())
     val uiState: StateFlow<ImageUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            latestResultUri.collect { uri ->
+                if (!_uiState.value.isGenerating && uri != null) {
+                    _uiState.update { it.copy(resultImageUri = uri) }
+                }
+            }
+        }
+    }
 
     fun updatePrompt(prompt: String) {
         _uiState.update { it.copy(prompt = prompt) }
@@ -75,7 +88,7 @@ class ImageViewModel(
                     returnBinary = true
                 )
                 val bytes = imageClient.generateBinary(apiKey, req)
-                val uri = saveBytesToCache(bytes)
+                val uri = persistImage(bytes, GeneratedMediaOperation.GENERATE, model, prompt, null)
                 _uiState.update { it.copy(resultImageUri = uri) }
             } catch (e: CancellationException) {
                 throw e
@@ -114,7 +127,7 @@ class ImageViewModel(
                     prompt = prompt
                 )
                 val result = imageClient.edit(apiKey, req)
-                val resultUri = saveBytesToCache(result.bytes)
+                val resultUri = persistImage(result.bytes, GeneratedMediaOperation.EDIT, model, prompt, result.mimeType)
                 _uiState.update { it.copy(resultImageUri = resultUri) }
             } catch (e: CancellationException) {
                 throw e
@@ -131,11 +144,12 @@ class ImageViewModelFactory(
     private val imageClient: ImageClient,
     private val apiKeyProvider: suspend () -> String?,
     private val uriToBase64: suspend (Uri) -> String?,
-    private val saveBytesToCache: suspend (ByteArray) -> Uri?,
+    private val persistImage: suspend (ByteArray, GeneratedMediaOperation, String, String, String?) -> Uri?,
+    private val latestResultUri: Flow<Uri?>,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(ImageViewModel::class.java))
         @Suppress("UNCHECKED_CAST")
-        return ImageViewModel(imageClient, apiKeyProvider, uriToBase64, saveBytesToCache) as T
+        return ImageViewModel(imageClient, apiKeyProvider, uriToBase64, persistImage, latestResultUri) as T
     }
 }

@@ -14,19 +14,23 @@ The format is inspired by Keep a Changelog and versioning should follow the proj
 - Core security/common/design-system modules.
 - Room-backed `:core:data` foundation.
 - Android/desktop parity documentation and source-bootstrap workflow.
-- Image Studio foundation: `ImageScreen`, `ImageViewModel`, Photo Picker SAF integration, binary stream decoding, and local cache-backed URI loading.
+- Image Studio foundation: `ImageScreen`, `ImageViewModel`, Photo Picker SAF integration, binary stream decoding, and durable app-private URI loading.
 - `:venice-sdk` Image client (`ImageClient`) with binary response support for `return_binary=true`.
 - `:venice-sdk` Audio client (`AudioClient`) with `/audio/speech` direct binary stream support.
 - `:venice-sdk` Video client (`VideoClient`) with `/video/queue`, `/video/retrieve`, `/video/complete`, and dynamic Content-Type stream/status discriminator.
 - Typed queued-audio quote/queue/retrieve/complete operations, audio transcription, and voice cloning.
 - Video quote and transcription operations.
 - Separate chat reasoning request controls and `ReasoningDelta` stream events.
+- Official local Android emulator doctor/QA harness with timestamped, gitignored runtime evidence.
+- Room v2 generated-media metadata, validated SHA-256-addressed image files, bounded profile queries, deletion, and latest-result restore after process restart.
 
 ### Security
 - Android-native credential-storage boundary.
 - No-telemetry-by-default project contract.
 - HTTPS-only networking contract.
 - Redaction requirements for credentials and sensitive local data.
+- Settings now states the API-key-only authentication boundary and no longer reloads a stored key into editable UI state.
+- The full 22-destination navigation drawer now scrolls on phone viewports, making lower destinations such as Settings reachable.
 
 ### Changed
 - Ongoing migration of Venice Forge desktop behavior to Android-native architecture.

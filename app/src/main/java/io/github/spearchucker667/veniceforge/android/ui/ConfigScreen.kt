@@ -42,11 +42,12 @@ import kotlinx.coroutines.launch
 fun ConfigScreen(
     secureStore: SecureSecretStore,
     sdk: VeniceForgeSdk,
+    profileId: String,
     modifier: Modifier = Modifier,
 ) {
-    val profileId = "default"
     val scope = rememberCoroutineScope()
-    var apiKey by remember { mutableStateOf("") }
+    var apiKeyInput by remember { mutableStateOf("") }
+    var hasStoredKey by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("No API key loaded") }
     var loading by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
@@ -56,7 +57,7 @@ fun ConfigScreen(
     LaunchedEffect(Unit) {
         val existing = secureStore.loadApiKey(profileId)
         if (!existing.isNullOrBlank()) {
-            apiKey = existing
+            hasStoredKey = true
             status = "API key loaded from Android Keystore-backed storage"
             hasError = false
         }
@@ -89,11 +90,15 @@ fun ConfigScreen(
                 }
             }
             Text("Starter functionality: secure API-key persistence plus live /models capability discovery.")
+            Text(
+                "Authentication uses a Venice API key. Normal Venice.ai account login is not supported in this app.",
+                fontWeight = FontWeight.SemiBold,
+            )
         }
         item {
             OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
+                value = apiKeyInput,
+                onValueChange = { apiKeyInput = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Venice API key") },
                 singleLine = true,
@@ -103,9 +108,11 @@ fun ConfigScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
-                    enabled = apiKey.isNotBlank(),
+                    enabled = apiKeyInput.isNotBlank(),
                     onClick = {
-                        secureStore.saveApiKey(profileId, apiKey)
+                        secureStore.saveApiKey(profileId, apiKeyInput)
+                        apiKeyInput = ""
+                        hasStoredKey = true
                         status = "Saved to Keystore-backed storage"
                         hasError = false
                     },
@@ -113,20 +120,23 @@ fun ConfigScreen(
                 OutlinedButton(
                     onClick = {
                         secureStore.deleteApiKey(profileId)
-                        apiKey = ""
+                        apiKeyInput = ""
+                        hasStoredKey = false
                         models = emptyList()
                         status = "API key removed"
                         hasError = false
                     },
                 ) { Text("Remove") }
                 Button(
-                    enabled = apiKey.isNotBlank() && !loading,
+                    enabled = (apiKeyInput.isNotBlank() || hasStoredKey) && !loading,
                     onClick = {
                         loading = true
                         hasError = false
                         status = "Loading /models…"
                         scope.launch {
-                            runCatching { sdk.listModels(apiKey) }
+                            val apiKey = apiKeyInput.takeIf(String::isNotBlank)
+                                ?: secureStore.loadApiKey(profileId)
+                            runCatching { requireNotNull(apiKey) { "No API key is stored" }; sdk.listModels(apiKey) }
                                 .onSuccess {
                                     models = it
                                     status = "Loaded ${it.size} models"

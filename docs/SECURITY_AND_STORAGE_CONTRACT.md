@@ -13,3 +13,11 @@
 11. Profile boundaries apply to secrets, conversations, media metadata, prompts, documents, backups, settings, and background jobs.
 12. Diagnostics exports are redacted by construction and exclude raw prompt/response payloads.
 13. No telemetry/crash analytics SDK is introduced without an explicit product decision and user-facing privacy update.
+
+## Current generated-image storage
+
+- Completed Image Studio results are signature/MIME checked, size bounded, SHA-256 addressed, and atomically written under the app's private `filesDir/generated-media/` tree.
+- Room schema v2 stores profile ownership, operation, MIME type, digest, relative app-private path, byte size, runtime model ID, prompt, and creation time. It does not store the image bytes.
+- Media paths are resolved only when their canonical path remains under the owned root. Cache storage is not used for completed generated images.
+- Image metadata queries are profile-scoped and bounded. Profile-media deletion removes both metadata and owned files through `GeneratedMediaRepository.deleteForProfile`.
+- External export is not implemented yet; future export must use SAF and must not expose the private path directly.
