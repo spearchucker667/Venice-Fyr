@@ -14,6 +14,7 @@ class SseLineParserTest {
             data: {"id":"abc"}
 
             data: {"delta":"hi"}
+
             data: [DONE]
         """.trimIndent()
         val reader = BufferedReader(StringReader(input))
@@ -27,6 +28,21 @@ class SseLineParserTest {
     @Test
     fun `yields null on blank stream when done`() {
         val parser = SseLineParser(BufferedReader(StringReader("")))
+        assertNull(parser.nextData())
+    }
+
+    @Test
+    fun `joins multiline data fields and ignores other SSE fields`() {
+        val input = """
+            event: message
+            id: 42
+            data: {"choices":
+            data: [{"index":0}]}
+
+        """.trimIndent()
+        val parser = SseLineParser(BufferedReader(StringReader(input)))
+
+        assertEquals("{\"choices\":\n[{\"index\":0}]}", parser.nextData())
         assertNull(parser.nextData())
     }
 }

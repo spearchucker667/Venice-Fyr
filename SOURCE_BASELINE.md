@@ -51,7 +51,15 @@ The dependency set intentionally favors stable releases. Re-verify versions befo
   - Runtime dynamic model discovery and `model_spec` parsing (`VeniceModel`, `ModelSpec`, `ModelCapabilities`, `ModelCatalog`).
   - Authoritative `/models/traits` (`{"default": "model-id"}`) and `/models/compatibility_mapping` parsing.
   - Multi-turn conversation history persistence and request serialization.
-  - SSE streaming with multi-tool-call delta parsing and single terminal event enforcement.
-  - Cooperative stream cancellation with underlying OkHttp call cancellation.
+  - SSE streaming with spec-compliant multiline event parsing, multi-tool-call delta parsing, and single terminal event enforcement.
+  - Cancellation-native asynchronous OkHttp streaming; consumer cancellation cancels the underlying call without waiting for a blocked response read.
+  - Explicit terminal-state handling: `finish_reason` and `[DONE]` succeed, while unexpected EOF fails with `VeniceSdkException.Protocol`.
   - Structured SDK error hierarchy (`RateLimit`, `Authentication`, `Validation`, `Server`, `Http`) with header extraction.
   - Shared SDK instance across UI and background layers.
+
+### 2026-08-15 Chat Transport Hardening Session
+
+- Venice Fyr starting HEAD: `c9e69cc581050b485eb2b990e8c9e207e9867df5`.
+- Venice API Docs HEAD: `6e69346b13695bd53ba33a1d34e7b28841e10f98` (Swagger `20260814.194349`).
+- Upstream paths consulted: `swagger.yaml` (`POST /chat/completions`, `ChatCompletionRequest`), `api-reference/error-codes.mdx`, `guides/projects/rust-llm-gateway.mdx`, `agents.md`, `skill.md`, and the required `api-reference/`, `guides/`, `overview/`, and `data/static-models.json` source subset.
+- Drift review from the prior `db3b9f4` snapshot found no chat wire change relevant to this correction; the Swagger change adds `discount_to_user` model metadata and advances the schema version.

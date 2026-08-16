@@ -54,7 +54,7 @@ val conversation = listOf(
 val request = ChatRequest(
     model = defaultModelId,
     messages = conversation,
-    stream = true,
+    stream = true, // streamChat rejects false; a typed non-streaming API is not implemented yet
     veniceParameters = VeniceParameters(
         enableWebSearch = "auto",
         includeVeniceSystemPrompt = true,
@@ -69,10 +69,10 @@ chatClient.streamChat(apiKey, request).collect { chunk ->
             println("Stream connected")
         }
         is ChatStreamChunk.Delta -> {
-            chunk.text?.let { print(it) }
+            chunk.textFragment?.let { print(it) }
         }
         is ChatStreamChunk.ToolCallDelta -> {
-            println("Tool call #${chunk.index}: ${chunk.name} args: ${chunk.arguments}")
+            println("Tool call #${chunk.index}: ${chunk.name} args: ${chunk.argumentsFragment}")
         }
         is ChatStreamChunk.Finish -> {
             println("\nStream finished with reason: ${chunk.reason}")
@@ -83,6 +83,8 @@ chatClient.streamChat(apiKey, request).collect { chunk ->
     }
 }
 ```
+
+`streamChat()` cancels its active OkHttp call when collection is cancelled. A stream that ends without either an explicit `finish_reason` or `[DONE]` throws `VeniceSdkException.Protocol`; partial output must not be persisted as a completed reply.
 
 ---
 
@@ -101,6 +103,8 @@ try {
     println("Venice server error ($e.statusCode): ${e.safeMessage}")
 } catch (e: VeniceSdkException.Network) {
     println("Network failure: ${e.message} (timeout: ${e.isTimeout})")
+} catch (e: VeniceSdkException.Protocol) {
+    println("Incomplete or invalid Venice response: ${e.message}")
 } catch (e: VeniceSdkException.Cancelled) {
     println("Request was cancelled by caller")
 } catch (e: VeniceSdkException) {

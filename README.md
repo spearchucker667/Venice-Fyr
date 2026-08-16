@@ -53,6 +53,7 @@ This repository is built around:
 - HTTPS-only network-security policy.
 - No telemetry by default.
 - Runtime Venice model/capability discovery rather than static model allowlists.
+- Cancellation-native chat SSE transport with explicit completion markers and structured transport errors.
 - A read-only desktop source mirror used for parity work.
 
 The repository evolves quickly. Treat the source tree and the parity matrix as authoritative if this README becomes stale.
@@ -110,8 +111,8 @@ The exact source path, branch, remote, and commit SHA are written to the ignored
 - Desktop source archive inspected: `Venice_Forge-main.zip`
 - Remote repository: `spearchucker667/Venice_Forge`, branch `main`
 - Latest remote commit observed: `bc5c17374ef4937f5837f5580d29a88bfab333ee` (Media Studio capability-routing hardening)
-- Venice API upstream snapshot recorded by desktop: commit `db3b9f4f40fe71abff2011bcaa9c23ad797c94f3`, retrieved `2026-08-14`
-- Venice OpenAPI schema version: `20260814.153445`
+- Venice API upstream source: commit `6e69346b13695bd53ba33a1d34e7b28841e10f98`, refreshed `2026-08-15`
+- Venice OpenAPI schema version: `20260814.194349`
 
 ---
 

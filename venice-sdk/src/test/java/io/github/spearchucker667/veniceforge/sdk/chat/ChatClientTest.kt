@@ -2,7 +2,9 @@ package io.github.spearchucker667.veniceforge.sdk.chat
 
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
 import io.github.spearchucker667.veniceforge.sdk.VeniceSdkConfig
+import io.github.spearchucker667.veniceforge.sdk.VeniceSdkException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -22,13 +24,16 @@ import okio.Source
 import okio.Timeout
 import okio.buffer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ChatClientTest {
     private fun load(name: String): String =
         ChatClientTest::class.java.getResourceAsStream("/fixtures/chat-stream/$name")!!
@@ -68,7 +73,9 @@ class ChatClientTest {
     fun `emits exactly one terminal finish event when finish_reason is followed by DONE`() = runTest {
         val sse = """
             data: {"choices":[{"index":0,"delta":{"content":"Hello"}}]}
+
             data: {"choices":[{"index":0,"finish_reason":"stop"}]}
+
             data: [DONE]
         """.trimIndent() + "\n\n"
 
@@ -88,7 +95,9 @@ class ChatClientTest {
     fun `parses and preserves multiple tool calls in a single SSE chunk`() = runTest {
         val sse = """
             data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"get_weather","arguments":"{\"loc\":"}},{"index":1,"id":"call_2","function":{"name":"get_time","arguments":"{}"}}]}}]}
+
             data: {"choices":[{"index":0,"finish_reason":"tool_calls"}]}
+
             data: [DONE]
         """.trimIndent() + "\n\n"
 
@@ -119,7 +128,7 @@ class ChatClientTest {
     @Test
     fun `stream-side provider error emits Error chunk without duplicate success finish`() = runTest {
         val sse = """
-            data: {"error":{"message":"Model overloaded","code":429}}
+            data: {"error":{"message":"Model overloaded for vn-secret123456","code":429}}
         """.trimIndent() + "\n\n"
 
         val chunks = client(sse)
@@ -131,11 +140,93 @@ class ChatClientTest {
 
         val errors = chunks.filterIsInstance<ChatStreamChunk.Error>()
         assertEquals(1, errors.size)
-        assertEquals("Model overloaded", errors.first().message)
+        assertEquals("Model overloaded for [REDACTED_API_KEY]", errors.first().message)
         assertEquals(429, errors.first().code)
+        assertFalse(errors.first().message.contains("vn-secret123456"))
 
         val finishEvents = chunks.filterIsInstance<ChatStreamChunk.Finish>()
         assertEquals(0, finishEvents.size)
+    }
+
+    @Test
+    fun `unexpected EOF before terminal marker is a protocol failure`() = runTest {
+        val truncated = """
+            data: {"choices":[{"index":0,"delta":{"content":"partial"}}]}
+
+        """.trimIndent()
+
+        try {
+            client(truncated)
+                .streamChat(
+                    apiKey = "test-key",
+                    request = ChatRequest(model = "test-model", messages = listOf(ChatMessage.user("hi"))),
+                )
+                .toList()
+            fail("Expected VeniceSdkException.Protocol")
+        } catch (e: VeniceSdkException.Protocol) {
+            assertEquals("Chat stream ended before finish_reason or [DONE]", e.message)
+        }
+    }
+
+    @Test
+    fun `DONE is a successful terminal marker when finish reason is absent`() = runTest {
+        val chunks = client("data: [DONE]\n\n")
+            .streamChat(
+                apiKey = "test-key",
+                request = ChatRequest(model = "test-model", messages = listOf(ChatMessage.user("hi"))),
+            )
+            .toList()
+
+        assertEquals(listOf(ChatStreamChunk.Open(), ChatStreamChunk.Finish("done")), chunks)
+    }
+
+    @Test
+    fun `non-success response uses structured SDK exception`() = runTest {
+        val jsonMedia = "application/json".toMediaType()
+        val ok = OkHttpClient.Builder()
+            .addInterceptor(Interceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(401)
+                    .message("Unauthorized")
+                    .header("x-request-id", "req-chat-auth")
+                    .body("""{"error":"Authentication failed"}""".toResponseBody(jsonMedia))
+                    .build()
+            })
+            .build()
+        val chatClient = ChatClient(VeniceForgeSdk(config = VeniceSdkConfig(), httpClient = ok))
+
+        try {
+            chatClient.streamChat(
+                apiKey = "test-key",
+                request = ChatRequest(model = "test-model", messages = listOf(ChatMessage.user("hi"))),
+            ).toList()
+            fail("Expected VeniceSdkException.Authentication")
+        } catch (e: VeniceSdkException.Authentication) {
+            assertEquals(401, e.statusCode)
+            assertEquals("req-chat-auth", e.requestId)
+            assertEquals("Authentication failed", e.safeMessage)
+        }
+    }
+
+    @Test
+    fun `streaming API rejects non-streaming requests`() = runTest {
+        try {
+            client("data: [DONE]\n\n")
+                .streamChat(
+                    apiKey = "test-key",
+                    request = ChatRequest(
+                        model = "test-model",
+                        messages = listOf(ChatMessage.user("hi")),
+                        stream = false,
+                    ),
+                )
+                .toList()
+            fail("Expected IllegalArgumentException")
+        } catch (e: IllegalArgumentException) {
+            assertEquals("streamChat requires ChatRequest.stream=true", e.message)
+        }
     }
 
     @Test
@@ -154,13 +245,15 @@ class ChatClientTest {
                     sink.write(chunk1)
                     return chunk1.size.toLong()
                 }
-                try {
-                    Thread.sleep(60_000)
-                } catch (ie: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw IOException("interrupted", ie)
+                while (callRef.get()?.isCanceled() != true) {
+                    try {
+                        Thread.sleep(10)
+                    } catch (ie: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        throw IOException("interrupted", ie)
+                    }
                 }
-                return -1L
+                throw IOException("canceled")
             }
         }
 
@@ -199,6 +292,14 @@ class ChatClientTest {
             }
         }
         advanceUntilIdle()
+
+        val captureDeadline = System.currentTimeMillis() + 3_000
+        while (System.currentTimeMillis() < captureDeadline) {
+            if (callRef.get() != null && delivered.get()) break
+            Thread.sleep(20)
+        }
+        assertNotNull("OkHttp call should have been captured before cancellation", callRef.get())
+        assertTrue("Initial SSE chunk should have been delivered before cancellation", delivered.get())
 
         job.cancel()
         advanceUntilIdle()

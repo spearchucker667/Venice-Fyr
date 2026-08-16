@@ -27,6 +27,8 @@ The format is inspired by Keep a Changelog and versioning should follow the proj
 
 ### Changed
 - Ongoing migration of Venice Forge desktop behavior to Android-native architecture.
+- Chat streaming now uses OkHttp's asynchronous call path so cancelling collection immediately cancels the underlying request, even while the response reader is blocked.
+- Chat SSE parsing now honors multiline event framing, routes non-2xx responses through structured SDK exceptions, redacts provider error messages, rejects `stream=false` at the streaming boundary, and treats unexpected EOF as a protocol failure.
 
 ### Known limitations
 - Android feature parity is incomplete.

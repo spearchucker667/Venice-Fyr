@@ -44,7 +44,7 @@ Follow this 14-step workflow whenever modifying or adding Venice API endpoints:
 7. **Preserve Unknown / Additive Fields**: Use `ignoreUnknownKeys = true` and preserve raw JSON where downstream consumers need forward compatibility.
 8. **Route Through Centralized SDK Transport**: Use `VeniceForgeSdk` and shared `OkHttpClient` instance; never scatter raw HTTP requests.
 9. **Implement Structured Error Handling**: Route non-2xx responses through `parseHttpError` to produce typed `VeniceSdkException` variants.
-10. **Implement Streaming / Queuing Lifecycle**: If streaming (SSE), enforce single terminal events and cooperative cancellation. If queued (e.g. video/music), implement polling state machines.
+10. **Implement Streaming / Queuing Lifecycle**: If streaming (SSE), use cancellation-native asynchronous transport, parse blank-line-delimited events (including multiline `data:` fields), and enforce explicit terminal states. A `finish_reason` or `[DONE]` completes chat successfully; EOF without either is a `VeniceSdkException.Protocol`. Route non-2xx responses through `parseHttpError`; never expose a raw provider body. If queued (e.g. video/music), implement polling state machines.
 11. **Update Source Manifest**: Record the status in [`docs/reference/VENICE_API_SOURCE_MANIFEST.md`](file:///Users/super_user/Projects/Venice%20Fyr/docs/reference/VENICE_API_SOURCE_MANIFEST.md).
 12. **Update SDK Examples**: Document public API usage in [`docs/SDK_EXAMPLES.md`](file:///Users/super_user/Projects/Venice%20Fyr/docs/SDK_EXAMPLES.md).
 13. **Add Tests & Fixtures**: Write unit tests using authoritative schemas (e.g. `MockWebServer` or wire mocks).

@@ -118,6 +118,7 @@ Every API-related session must record:
 - **No telemetry by default.**
 - **No broad storage permissions.** Use explicit SAF grants and Photo Picker.
 - **No raw prompt/response/API-key logging.**
+- **Chat SSE cancellation must reach the active OkHttp `Call` independently of a blocked response read.** A truncated stream without `finish_reason` or `[DONE]` is a protocol failure, never an inferred successful `stop`.
 - **Local Family Safe Mode and Venice provider `safe_mode` are distinct.**
 - **Preserve explicit `safe_mode=false` when selected.**
 - **Model capabilities are runtime data.**
