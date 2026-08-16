@@ -1,7 +1,5 @@
 package io.github.spearchucker667.veniceforge.sdk.chat
 
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -16,6 +14,9 @@ data class ChatMessage(
     @SerialName("name") val name: String? = null,
     @SerialName("tool_calls") val toolCalls: List<ToolCall>? = null,
     @SerialName("tool_call_id") val toolCallId: String? = null,
+    @SerialName("reasoning_content") val reasoningContent: String? = null,
+    @SerialName("reasoning_details") val reasoningDetails: JsonElement? = null,
+    @SerialName("thought_signature") val thoughtSignature: String? = null,
 ) {
     companion object {
         fun user(content: String, name: String? = null) = ChatMessage("user", content, name)
@@ -51,6 +52,31 @@ data class ToolFunction(
     val parameters: JsonElement? = null,
 )
 
+@Serializable
+enum class ReasoningEffort {
+    @SerialName("none") NONE,
+    @SerialName("minimal") MINIMAL,
+    @SerialName("low") LOW,
+    @SerialName("medium") MEDIUM,
+    @SerialName("high") HIGH,
+    @SerialName("xhigh") XHIGH,
+    @SerialName("max") MAX,
+}
+
+@Serializable
+enum class ReasoningSummary {
+    @SerialName("auto") AUTO,
+    @SerialName("concise") CONCISE,
+    @SerialName("detailed") DETAILED,
+}
+
+@Serializable
+data class ReasoningConfig(
+    val enabled: Boolean? = null,
+    val effort: ReasoningEffort? = null,
+    val summary: ReasoningSummary? = null,
+)
+
 /**
  * Request payload for POST /chat/completions.
  */
@@ -63,6 +89,8 @@ data class ChatRequest(
     @SerialName("top_p") val topP: Double? = null,
     @SerialName("max_tokens") val maxTokens: Int? = null,
     @SerialName("max_completion_tokens") val maxCompletionTokens: Int? = null,
+    val reasoning: ReasoningConfig? = null,
+    @SerialName("reasoning_effort") val reasoningEffort: ReasoningEffort? = null,
     val tools: List<ToolSpec>? = null,
     @SerialName("venice_parameters") val veniceParameters: VeniceParameters? = null,
 )
@@ -70,7 +98,6 @@ data class ChatRequest(
 /**
  * Venice-specific operational parameters passed inside `venice_parameters`.
  */
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class VeniceParameters(
     @SerialName("enable_web_search") val enableWebSearch: String? = null, // "auto", "on", "off"
@@ -81,9 +108,5 @@ data class VeniceParameters(
     @SerialName("include_venice_system_prompt") val includeVeniceSystemPrompt: Boolean? = null,
     @SerialName("strip_thinking_response") val stripThinkingResponse: Boolean? = null,
     @SerialName("disable_thinking") val disableThinking: Boolean? = null,
-    @SerialName("enable_e2ee") val enableE2ee: Boolean? = null,
     @SerialName("include_search_results_in_stream") val includeSearchResultsInStream: Boolean? = null,
-    @SerialName("safe_mode")
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val safeMode: Boolean? = null,
 )

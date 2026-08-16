@@ -124,6 +124,9 @@ Every API-related session must record:
 - **Model capabilities are runtime data.**
 - **Paid/mutating operations require explicit approval and duplicate-submission defenses.**
 - **Electron IPC/services are behavioral specifications;** map them to Android-native boundaries (Keystore, Room, WorkManager, Media3).
+- **Binary media endpoints stay binary.** Image edit, multi-edit, upscale, and queued media retrieval must return bytes plus MIME metadata; never fabricate JSON envelopes.
+- **Reasoning is a separate channel.** Preserve `reasoning_content` independently from assistant content, including encrypted/summarized placeholders.
+- **Queue submission is not completion.** Persist queue IDs and any queue-time download URL; only explicit status or binary retrieval establishes completion.
 
 ---
 

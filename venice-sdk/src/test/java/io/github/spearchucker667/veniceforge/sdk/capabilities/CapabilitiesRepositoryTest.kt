@@ -1,6 +1,7 @@
 package io.github.spearchucker667.veniceforge.sdk.capabilities
 
 import io.github.spearchucker667.veniceforge.sdk.VeniceEndpoints
+import io.github.spearchucker667.veniceforge.sdk.ModelType
 import io.github.spearchucker667.veniceforge.sdk.VeniceSdkConfig
 import kotlinx.coroutines.test.runTest
 import okhttp3.Interceptor
@@ -14,6 +15,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CopyOnWriteArrayList
 
 class CapabilitiesRepositoryTest {
 
@@ -94,9 +96,33 @@ class CapabilitiesRepositoryTest {
         val repo = CapabilitiesRepository(fakeSdk(traitsJson = orphanTrait))
         val catalog = repo.fetchLiveCapabilities("test-key")
 
-        // defaultTextModelId returns the trait value, but modelForTrait returns null safely
-        assertEquals("non-existent-model", catalog.defaultTextModelId)
+        assertEquals("llama-3.3-70b", catalog.defaultTextModelId)
         assertNull(catalog.modelForTrait("default"))
         assertNotNull(catalog.byId("llama-3.3-70b"))
+    }
+
+    @Test
+    fun `propagates discovered modality to traits and compatibility queries`() = runTest {
+        val queries = CopyOnWriteArrayList<String>()
+        val models = """{"object":"list","type":"all","data":[{"id":"image-model","type":"image","model_spec":{"name":"Image"}}]}"""
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            queries += chain.request().url.toString()
+            val body = when {
+                chain.request().url.encodedPath.endsWith("/models/traits") -> """{"data":{"default":"image-model"}}"""
+                chain.request().url.encodedPath.endsWith("/models/compatibility_mapping") -> """{"data":{"image-alias":"image-model"}}"""
+                else -> models
+            }
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
+                .code(200).message("OK").body(body.toResponseBody("application/json".toMediaType())).build()
+        }.build()
+        val catalog = CapabilitiesRepository(
+            io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk(VeniceSdkConfig(), client),
+        ).fetchLiveCapabilities("key")
+
+        assertEquals("image-model", catalog.modelForTrait("image:default")?.id)
+        assertEquals("image-model", catalog.defaultModelIdFor(ModelType.IMAGE))
+        assertEquals("image-model", catalog.modelForAlias("image:image-alias")?.id)
+        assertTrue(queries.any { it.endsWith("models/traits?type=image") })
+        assertTrue(queries.any { it.endsWith("models/compatibility_mapping?type=image") })
     }
 }

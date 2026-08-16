@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-08-15",
+  "baseline": {
+    "repositoryHead": "df8f383b590ad7f8e40201e1b6b64ab039712f54",
+    "apiDocsHead": "6e69346b13695bd53ba33a1d34e7b28841e10f98",
+    "swaggerVersion": "20260814.194349",
+    "desktopHead": "bc5c17374ef4937f5837f5580d29a88bfab333ee"
+  },
+  "counts": { "P0": 0, "P1": 3, "P2": 8, "P3": 0, "total": 11 },
+  "findings": [
+    {"id":"POST-P1-01","severity":"P1","status":"CONFIRMED","area":"Chat SDK completeness","module":":venice-sdk","file":"chat/ChatRequest.kt; chat/ChatClient.kt","symbol":"ChatRequest; ChatClient.streamChat","priorFindingIds":["CHAT-01","CHAT-02","CHAT-03","CHAT-04"],"summary":"Non-streaming, multimodal content, structured output, native search tools, and other current chat controls remain unsupported."},
+    {"id":"POST-P1-03","severity":"P1","status":"CONFIRMED","area":"Queued media durability","module":":app","file":"VeniceForgeApp.kt","symbol":"absent durable job orchestrator","priorFindingIds":["ARCH-05","VID-07"],"summary":"Audio/video queue primitives have no persisted WorkManager state machine, bounded polling, or duplicate-submission defense."},
+    {"id":"POST-P1-04","severity":"P1","status":"CONFIRMED","area":"Product parity","module":":app","file":"VeniceForgeApp.kt; FeatureCatalog.kt","symbol":"FeatureScreen fallback","priorFindingIds":[],"summary":"Only settings, chat, and image have dedicated screens; 19 destinations remain scaffolds. P1 only for parity/release claims and P2 while explicitly alpha."},
+    {"id":"POST-P2-01","severity":"P2","status":"CONFIRMED","area":"Image API coverage","module":":venice-sdk","file":"image/ImageClient.kt","symbol":"ImageClient","priorFindingIds":["IMG-02","IMG-03","IMG-04","IMG-05"],"summary":"Background removal, styles, compatibility generations, and multipart variants are absent."},
+    {"id":"POST-P2-02","severity":"P2","status":"CONFIRMED","area":"Reasoning app contract","module":":app","file":"chat/ChatViewModel.kt; chat/ChatScreen.kt","symbol":"UiMessage","priorFindingIds":[],"summary":"SDK reasoning is preserved separately but the app does not persist or render it."},
+    {"id":"POST-P2-03","severity":"P2","status":"CONFIRMED","area":"Image lifecycle and storage","module":":app","file":"image/ImageViewModel.kt; VeniceForgeApp.kt","symbol":"ImageUiState; saveBytesToCache","priorFindingIds":["VM-08","ARCH-09"],"summary":"Image state is not process-restored and generated media is cache-only."},
+    {"id":"POST-P2-04","severity":"P2","status":"CONFIRMED","area":"Instrumentation","module":"repository","file":"app/src/androidTest (absent); android-ci.yml","symbol":"device tests","priorFindingIds":["TEST-COVERAGE-03","TEST-COVERAGE-04"],"summary":"No device/managed-device coverage proves Keystore, Room, Photo Picker, SAF, process recreation, or minified runtime behavior."},
+    {"id":"POST-P2-05","severity":"P2","status":"CONFIRMED","area":"Release engineering","module":"repository","file":"android-ci.yml; app/build.gradle.kts","symbol":"release pipeline","priorFindingIds":["BUILD-03","BUILD-05"],"summary":"Unsigned release builds pass, but signing, provenance, published smoke, and SDK binary compatibility are absent."},
+    {"id":"POST-P2-06","severity":"P2","status":"CONFIRMED","area":"Credential UI lifetime","module":":app","file":"ui/ConfigScreen.kt","symbol":"apiKey state","priorFindingIds":[],"summary":"Plaintext API key remains in Compose state for the screen lifetime."},
+    {"id":"POST-P2-07","severity":"P2","status":"CONFIRMED","area":"Media memory safety","module":":app","file":"VeniceForgeApp.kt; image/ImageScreen.kt","symbol":"readBytes; decodeFile","priorFindingIds":["VM-06","ARCH-08","ARCH-13"],"summary":"Input Base64 and bitmap decode paths do not enforce explicit size/signature bounds."},
+    {"id":"POST-P2-08","severity":"P2","status":"CONFIRMED","area":"Asset licensing","module":"assets","file":"docs/assets/ayanami-rei.codex-pet/spritesheet.webp","symbol":"redistribution authority","priorFindingIds":["ASSET-DUP-02"],"summary":"Public redistribution authority for the character spritesheet remains unresolved."}
+  ]
+}

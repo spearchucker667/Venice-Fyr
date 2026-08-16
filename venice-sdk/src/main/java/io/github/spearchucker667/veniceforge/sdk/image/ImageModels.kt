@@ -31,7 +31,9 @@ data class GenerateImageRequest(
     @SerialName("enable_web_search") val enableWebSearch: Boolean? = null,
     @SerialName("disable_prompt_optimization_thinking") val disablePromptOptimizationThinking: Boolean? = null,
     @SerialName("enhance_prompt") val enhancePrompt: Boolean? = null,
-    @SerialName("style_references") val styleReferences: List<StyleReference>? = null
+    @SerialName("style_references") val styleReferences: List<StyleReference>? = null,
+    @SerialName("embed_exif_metadata") val embedExifMetadata: Boolean? = null,
+    @SerialName("lora_strength") val loraStrength: Int? = null,
 )
 
 @Serializable
@@ -80,5 +82,6 @@ data class GenerateImageTiming(
 data class GenerateImageResponse(
     val id: String? = null,
     val images: List<String>? = null,
-    val timing: GenerateImageTiming? = null
+    val timing: GenerateImageTiming? = null,
+    val request: kotlinx.serialization.json.JsonElement? = null,
 )

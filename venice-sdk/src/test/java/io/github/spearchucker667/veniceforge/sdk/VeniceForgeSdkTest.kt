@@ -158,4 +158,30 @@ class VeniceForgeSdkTest {
             assertNotNull(e.validationDetails)
         }
     }
+
+    @Test
+    fun `HTTP 402 returns structured PaymentRequired exception`() = runTest {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(Interceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(402)
+                    .message("Payment Required")
+                    .header("x-request-id", "req-payment")
+                    .header("PAYMENT-REQUIRED", "encoded-payment-metadata")
+                    .body("""{"error":{"code":"INSUFFICIENT_BALANCE","message":"Top up required"}}""".toResponseBody(jsonMedia))
+                    .build()
+            })
+            .build()
+
+        try {
+            VeniceForgeSdk(httpClient = client).listModels("test-key")
+            org.junit.Assert.fail("Expected VeniceSdkException.PaymentRequired")
+        } catch (e: VeniceSdkException.PaymentRequired) {
+            assertEquals("INSUFFICIENT_BALANCE", e.errorCode)
+            assertEquals("Top up required", e.safeMessage)
+            assertEquals("encoded-payment-metadata", e.paymentRequiredHeader)
+        }
+    }
 }

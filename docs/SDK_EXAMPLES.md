@@ -25,9 +25,10 @@ val capabilitiesRepo = CapabilitiesRepository(sdk)
 // Fetches /models, /models/traits, and /models/compatibility_mapping
 val catalog: ModelCatalog = capabilitiesRepo.fetchLiveCapabilities(apiKey)
 
-// Dynamically resolve default chat model ID (traits["default"] -> first text model -> fallback)
+// Dynamically resolve defaults from live traits with an online, matching-model fallback.
 val defaultModelId: String = catalog.defaultTextModelId
     ?: error("No compatible text model available on Venice API")
+val defaultImageModelId: String? = catalog.defaultModelIdFor(ModelType.IMAGE)
 
 // Inspect model capabilities
 val modelCaps: ModelCapabilities? = catalog.byId(defaultModelId)
@@ -55,10 +56,11 @@ val request = ChatRequest(
     model = defaultModelId,
     messages = conversation,
     stream = true, // streamChat rejects false; a typed non-streaming API is not implemented yet
+    reasoning = ReasoningConfig(enabled = true, effort = ReasoningEffort.HIGH),
+    reasoningEffort = ReasoningEffort.HIGH,
     veniceParameters = VeniceParameters(
         enableWebSearch = "auto",
         includeVeniceSystemPrompt = true,
-        safeMode = false, // Explicit false is preserved in wire payload
     ),
 )
 
@@ -70,6 +72,10 @@ chatClient.streamChat(apiKey, request).collect { chunk ->
         }
         is ChatStreamChunk.Delta -> {
             chunk.textFragment?.let { print(it) }
+        }
+        is ChatStreamChunk.ReasoningDelta -> {
+            // Keep provider reasoning separate from the assistant answer.
+            println("Reasoning: ${chunk.reasoningFragment}")
         }
         is ChatStreamChunk.ToolCallDelta -> {
             println("Tool call #${chunk.index}: ${chunk.name} args: ${chunk.argumentsFragment}")
@@ -86,6 +92,8 @@ chatClient.streamChat(apiKey, request).collect { chunk ->
 
 `streamChat()` cancels its active OkHttp call when collection is cancelled. A stream that ends without either an explicit `finish_reason` or `[DONE]` throws `VeniceSdkException.Protocol`; partial output must not be persisted as a completed reply.
 
+Provider-encrypted or summarized reasoning placeholders are returned unchanged. The current app does not persist or render reasoning history; SDK consumers must make that privacy/UI decision explicitly.
+
 ---
 
 ## 3. Structured Error Handling
@@ -99,6 +107,8 @@ try {
     println("Invalid API key or unauthorized: ${e.safeMessage}")
 } catch (e: VeniceSdkException.Validation) {
     println("Bad request parameters ($e.statusCode): ${e.safeMessage}")
+} catch (e: VeniceSdkException.PaymentRequired) {
+    println("Payment or balance required: ${e.safeMessage}")
 } catch (e: VeniceSdkException.Server) {
     println("Venice server error ($e.statusCode): ${e.safeMessage}")
 } catch (e: VeniceSdkException.Network) {
@@ -111,3 +121,64 @@ try {
     println("Generic SDK error: ${e.message}")
 }
 ```
+
+---
+
+## 4. Binary Image Operations
+
+```kotlin
+val images = sdk.imageClient()
+val edited: BinaryMediaResult = images.edit(
+    apiKey,
+    EditImageRequest(
+        image = inputDataUrl,
+        prompt = "Replace the sky with a sunset",
+        model = selectedRuntimeModelId,
+        outputFormat = "png",
+        safeMode = false, // Image provider field; explicit false is retained.
+    ),
+)
+
+check(edited.mimeType.startsWith("image/"))
+appMediaStore.persist(edited.bytes, edited.mimeType)
+```
+
+`edit`, `multiEdit`, and `upscale` return `BinaryMediaResult`; they never return a generated-image JSON envelope.
+
+---
+
+## 5. Queued Audio and Video
+
+```kotlin
+val audio = sdk.audioClient()
+val quote = audio.quote(apiKey, QuoteAudioRequest(musicModelId, durationSeconds = "60"))
+requestExplicitPaidOperationApproval(quote.quote)
+val queuedAudio = audio.queue(
+    apiKey,
+    QueueAudioRequest(musicModelId, "Warm ambient strings", durationSeconds = "60"),
+)
+
+when (val result = audio.retrieve(apiKey, RetrieveAudioRequest(queuedAudio.model, queuedAudio.queueId))) {
+    is AudioRetrieveResult.Processing -> scheduleBoundedPoll(result.averageExecutionTime)
+    is AudioRetrieveResult.CompletedBinary -> persistAudio(result.audio, result.mimeType)
+    is AudioRetrieveResult.UnknownStatus -> stopAndSurfaceUnknownStatus(result.status)
+}
+```
+
+```kotlin
+val video = sdk.videoClient()
+val queuedVideo = video.queue(
+    apiKey,
+    QueueVideoRequest(videoModelId, "A canal at dawn", duration = "5s"),
+)
+
+// Retain queuedVideo.downloadUrl in durable caller-owned job state.
+when (val result = video.retrieve(apiKey, RetrieveVideoRequest(queuedVideo.model, queuedVideo.queueId))) {
+    is VideoRetrieveResult.Processing -> scheduleBoundedPoll(result.averageExecutionTime)
+    is VideoRetrieveResult.CompletedRemote -> downloadFromRetainedQueueUrl(queuedVideo.downloadUrl)
+    is VideoRetrieveResult.CompletedBinary -> persistVideo(result.binaryVideo, result.mimeType)
+    is VideoRetrieveResult.UnknownStatus -> stopAndSurfaceUnknownStatus(result.status)
+}
+```
+
+Queue submission is never generation completion. Production callers must persist job state, bound polling, survive process death, and call `complete` only after successful durable download when automatic deletion was not requested.

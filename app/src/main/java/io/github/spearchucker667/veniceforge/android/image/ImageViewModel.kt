@@ -113,13 +113,9 @@ class ImageViewModel(
                     model = model,
                     prompt = prompt
                 )
-                val response = imageClient.edit(apiKey, req)
-                val base64 = response.images?.firstOrNull()
-                val uri = if (base64 != null) {
-                    val decodedBytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
-                    saveBytesToCache(decodedBytes)
-                } else null
-                _uiState.update { it.copy(resultImageUri = uri) }
+                val result = imageClient.edit(apiKey, req)
+                val resultUri = saveBytesToCache(result.bytes)
+                _uiState.update { it.copy(resultImageUri = resultUri) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

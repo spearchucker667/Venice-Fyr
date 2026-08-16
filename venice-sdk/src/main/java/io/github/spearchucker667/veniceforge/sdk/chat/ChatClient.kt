@@ -171,6 +171,13 @@ open class ChatClient(private val sdk: VeniceForgeSdk) {
         val emitted = mutableListOf<ChatStreamChunk>()
 
         if (delta != null) {
+            val reasoning = (delta["reasoning_content"] as? JsonPrimitive)
+                ?.takeIf { it.isString }
+                ?.content
+            if (reasoning != null) {
+                emitted.add(ChatStreamChunk.ReasoningDelta(index, reasoning))
+            }
+
             val toolCalls = delta["tool_calls"] as? JsonArray
             if (toolCalls != null && toolCalls.isNotEmpty()) {
                 for (tcElem in toolCalls) {

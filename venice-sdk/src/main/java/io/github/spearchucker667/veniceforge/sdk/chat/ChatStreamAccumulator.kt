@@ -2,6 +2,7 @@ package io.github.spearchucker667.veniceforge.sdk.chat
 
 class ChatStreamAccumulator {
     private val text = StringBuilder()
+    private val reasoning = StringBuilder()
     private val toolCalls = mutableMapOf<Int, MutableToolCall>()
     var finishedReason: String? = null
         private set
@@ -10,6 +11,7 @@ class ChatStreamAccumulator {
 
     fun apply(chunk: ChatStreamChunk) {
         when (chunk) {
+            is ChatStreamChunk.ReasoningDelta -> reasoning.append(chunk.reasoningFragment)
             is ChatStreamChunk.Delta -> {
                 if (!chunk.textFragment.isNullOrEmpty()) text.append(chunk.textFragment)
             }
@@ -27,6 +29,7 @@ class ChatStreamAccumulator {
 
     fun snapshot(): AssistantMessage = AssistantMessage(
         text = text.toString(),
+        reasoning = reasoning.toString(),
         toolCalls = toolCalls.entries
             .sortedBy { it.key }
             .map { (_, v) ->
@@ -42,6 +45,7 @@ class ChatStreamAccumulator {
 
     data class AssistantMessage(
         val text: String,
+        val reasoning: String,
         val toolCalls: List<ToolCall>,
         val finishedReason: String?,
         val error: ChatStreamChunk.Error?,

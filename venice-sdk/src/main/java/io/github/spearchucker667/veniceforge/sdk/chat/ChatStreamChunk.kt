@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 sealed class ChatStreamChunk {
     data class Open(val id: String? = null) : ChatStreamChunk()
+    data class ReasoningDelta(val index: Int, val reasoningFragment: String) : ChatStreamChunk()
     data class Delta(val index: Int, val textFragment: String?) : ChatStreamChunk()
     data class ToolCallDelta(
         val index: Int,

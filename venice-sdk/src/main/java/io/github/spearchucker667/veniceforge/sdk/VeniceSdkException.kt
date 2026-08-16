@@ -41,6 +41,15 @@ sealed class VeniceSdkException(message: String, cause: Throwable? = null) : Exc
         val validationDetails: String? = null,
     ) : VeniceSdkException("Venice API validation error ($statusCode): $safeMessage [request-id: $requestId]")
 
+    /** HTTP 402 insufficient balance or x402 payment requirement. */
+    data class PaymentRequired(
+        val statusCode: Int = 402,
+        val errorCode: String? = "PAYMENT_REQUIRED",
+        val safeMessage: String = "Payment or balance required",
+        val requestId: String? = null,
+        val paymentRequiredHeader: String? = null,
+    ) : VeniceSdkException("Venice API payment required ($statusCode): $safeMessage [request-id: $requestId]")
+
     /**
      * HTTP 5xx server-side error.
      */

@@ -15,6 +15,17 @@ class ChatStreamAccumulatorTest {
     }
 
     @Test
+    fun `accumulates reasoning separately from answer text`() {
+        val acc = ChatStreamAccumulator()
+        acc.apply(ChatStreamChunk.ReasoningDelta(0, "think "))
+        acc.apply(ChatStreamChunk.ReasoningDelta(0, "carefully"))
+        acc.apply(ChatStreamChunk.Delta(0, "answer"))
+
+        assertEquals("think carefully", acc.snapshot().reasoning)
+        assertEquals("answer", acc.snapshot().text)
+    }
+
+    @Test
     fun `reconstructs tool call across fragmented deltas`() {
         val acc = ChatStreamAccumulator()
         acc.apply(ChatStreamChunk.ToolCallDelta(0, "call_1", "web_search", null))

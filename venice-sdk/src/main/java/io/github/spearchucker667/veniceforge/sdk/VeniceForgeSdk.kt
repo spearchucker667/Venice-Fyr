@@ -2,6 +2,7 @@ package io.github.spearchucker667.veniceforge.sdk
 
 import io.github.spearchucker667.veniceforge.sdk.image.ImageClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -12,6 +13,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -51,6 +54,33 @@ class VeniceForgeSdk(
     fun userAgent() = config.userAgent
     fun httpClient() = httpClient
 
+    /** Execute an OkHttp call while ensuring coroutine cancellation cancels the socket. */
+    internal suspend fun awaitResponse(request: Request): Response = suspendCancellableCoroutine { continuation ->
+        val call = httpClient.newCall(request)
+
+        continuation.invokeOnCancellation {
+            call.cancel()
+        }
+
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (call.isCanceled() && continuation.isCancelled) return
+                val failure = VeniceSdkException.Network(e, isTimeout = e is SocketTimeoutException)
+                continuation.resumeWith(Result.failure(failure))
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!continuation.isActive) {
+                    response.close()
+                } else {
+                    continuation.resume(response) { _, responseToClose, _ ->
+                        responseToClose.close()
+                    }
+                }
+            }
+        })
+    }
+
 
     /**
      * Lists available models from the Venice API (GET /models).
@@ -86,7 +116,7 @@ class VeniceForgeSdk(
             if (!res.isSuccessful) {
                 throw parseHttpError(res)
             }
-            val body = res.body?.string().orEmpty()
+            val body = res.body.string()
             val root = runCatching { json.parseToJsonElement(body).jsonObject }
                 .getOrElse { throw VeniceSdkException.Protocol("Invalid JSON from /models", it) }
             val data = root["data"] as? JsonArray
@@ -109,10 +139,15 @@ class VeniceForgeSdk(
      * and returns the response body verbatim. Used by [CapabilitiesRepository] to
      * parse endpoints whose shape is not yet promoted to typed SDK methods.
      */
-    internal suspend fun getRaw(path: String, apiKey: String): String = withContext(Dispatchers.IO) {
+    internal suspend fun getRaw(
+        path: String,
+        apiKey: String,
+        queryParameters: Map<String, String> = emptyMap(),
+    ): String = withContext(Dispatchers.IO) {
         require(apiKey.isNotBlank()) { "apiKey must not be blank" }
         val url = _baseUrl.newBuilder()
             .addPathSegments(path.trimStart('/'))
+            .apply { queryParameters.forEach { (name, value) -> addQueryParameter(name, value) } }
             .build()
         val request = Request.Builder()
             .url(url)
@@ -134,7 +169,7 @@ class VeniceForgeSdk(
             if (!res.isSuccessful) {
                 throw parseHttpError(res)
             }
-            res.body?.string().orEmpty()
+            res.body.string()
         }
     }
 
@@ -145,7 +180,7 @@ class VeniceForgeSdk(
         val retryAfter = res.header("retry-after")?.toLongOrNull()
             ?: rateLimitInfo.resetRequestsTimestamp
 
-        val body = runCatching { res.body?.string() }.getOrNull()
+        val body = runCatching { res.body.string() }.getOrNull()
         var errorCode: String? = null
         var safeMessage = "HTTP $statusCode"
         var details: String? = null
@@ -165,6 +200,13 @@ class VeniceForgeSdk(
         }
 
         return when (statusCode) {
+            402 -> VeniceSdkException.PaymentRequired(
+                statusCode = statusCode,
+                errorCode = errorCode ?: "PAYMENT_REQUIRED",
+                safeMessage = safeMessage,
+                requestId = requestId,
+                paymentRequiredHeader = res.header("PAYMENT-REQUIRED"),
+            )
             429 -> VeniceSdkException.RateLimit(
                 statusCode = statusCode,
                 errorCode = errorCode ?: "RATE_LIMIT_EXCEEDED",

@@ -126,6 +126,26 @@ class ChatClientTest {
     }
 
     @Test
+    fun `emits reasoning separately from content and tool calls`() = runTest {
+        val sse = """
+            data: {"choices":[{"index":0,"delta":{"reasoning_content":"[Some reasoning content is encrypted]","content":"Answer","tool_calls":[{"index":0,"id":"call_1","function":{"name":"lookup","arguments":"{}"}}]}}]}
+
+            data: {"choices":[{"index":0,"finish_reason":"stop"}]}
+
+        """.trimIndent()
+
+        val chunks = client(sse).streamChat(
+            "test-key",
+            ChatRequest("test-model", listOf(ChatMessage.user("hi"))),
+        ).toList()
+
+        assertEquals("[Some reasoning content is encrypted]", chunks.filterIsInstance<ChatStreamChunk.ReasoningDelta>().single().reasoningFragment)
+        assertEquals("Answer", chunks.filterIsInstance<ChatStreamChunk.Delta>().single().textFragment)
+        assertEquals("lookup", chunks.filterIsInstance<ChatStreamChunk.ToolCallDelta>().single().name)
+        assertEquals("stop", chunks.filterIsInstance<ChatStreamChunk.Finish>().single().reason)
+    }
+
+    @Test
     fun `stream-side provider error emits Error chunk without duplicate success finish`() = runTest {
         val sse = """
             data: {"error":{"message":"Model overloaded for vn-secret123456","code":429}}

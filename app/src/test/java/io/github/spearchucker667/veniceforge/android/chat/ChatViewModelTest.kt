@@ -39,6 +39,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.EmptyCoroutineContext
 
 @RunWith(RobolectricTestRunner::class)
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ChatViewModelTest {
 
     private fun CoroutineDispatcher.asExecutor(): Executor =

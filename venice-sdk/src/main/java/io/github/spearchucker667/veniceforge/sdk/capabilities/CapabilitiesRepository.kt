@@ -2,7 +2,9 @@ package io.github.spearchucker667.veniceforge.sdk.capabilities
 
 import io.github.spearchucker667.veniceforge.sdk.VeniceEndpoints
 import io.github.spearchucker667.veniceforge.sdk.VeniceForgeSdk
+import io.github.spearchucker667.veniceforge.sdk.ModelType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -23,8 +25,16 @@ class CapabilitiesRepository(private val sdk: VeniceForgeSdk) {
 
     suspend fun fetchLiveCapabilities(apiKey: String): ModelCatalog = withContext(Dispatchers.IO) {
         val models = sdk.listModels(apiKey, null)
-        val traitsMap = fetchTraits(apiKey)
-        val compatMap = fetchCompatibility(apiKey)
+        val discoveredTypes = models.mapNotNull { ModelType.fromWireName(it.type) }
+            .filterNot { it == ModelType.ALL || it == ModelType.CODE }
+            .toSet()
+            .ifEmpty { setOf(ModelType.TEXT) }
+        val traitsMap = discoveredTypes
+            .flatMap { type -> namespaceAuxiliaryMap(type, fetchTraits(apiKey, type)).entries }
+            .associate { it.toPair() }
+        val compatMap = discoveredTypes
+            .flatMap { type -> namespaceAuxiliaryMap(type, fetchCompatibility(apiKey, type)).entries }
+            .associate { it.toPair() }
 
         // Invert compatibility mapping: modelId -> Set of aliases mapped to this model
         val compatibleByModelId = mutableMapOf<String, MutableSet<String>>()
@@ -91,9 +101,11 @@ class CapabilitiesRepository(private val sdk: VeniceForgeSdk) {
         )
     }
 
-    private suspend fun fetchTraits(apiKey: String): Map<String, String> {
+    private suspend fun fetchTraits(apiKey: String, type: ModelType): Map<String, String> {
         val raw = try {
-            sdk.getRaw("/${VeniceEndpoints.MODEL_TRAITS}", apiKey)
+            sdk.getRaw("/${VeniceEndpoints.MODEL_TRAITS}", apiKey, mapOf("type" to type.wireName))
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             return emptyMap()
         }
@@ -105,9 +117,11 @@ class CapabilitiesRepository(private val sdk: VeniceForgeSdk) {
         }.toMap()
     }
 
-    private suspend fun fetchCompatibility(apiKey: String): Map<String, String> {
+    private suspend fun fetchCompatibility(apiKey: String, type: ModelType): Map<String, String> {
         val raw = try {
-            sdk.getRaw("/${VeniceEndpoints.MODEL_COMPATIBILITY}", apiKey)
+            sdk.getRaw("/${VeniceEndpoints.MODEL_COMPATIBILITY}", apiKey, mapOf("type" to type.wireName))
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             return emptyMap()
         }
@@ -118,4 +132,12 @@ class CapabilitiesRepository(private val sdk: VeniceForgeSdk) {
             if (targetModelId != null) alias to targetModelId else null
         }.toMap()
     }
+
+    private fun namespaceAuxiliaryMap(type: ModelType, values: Map<String, String>): Map<String, String> =
+        values.mapKeys { (key, _) ->
+            when {
+                ':' in key || type == ModelType.TEXT -> key
+                else -> "${type.wireName}:$key"
+            }
+        }
 }

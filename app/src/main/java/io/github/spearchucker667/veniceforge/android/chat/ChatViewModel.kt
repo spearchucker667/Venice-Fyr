@@ -191,7 +191,9 @@ class ChatViewModel(
                 chatClient.streamChat(apiKey, req).collect { chunk ->
                     accumulator.apply(chunk)
                     when (chunk) {
-                        is ChatStreamChunk.Delta, is ChatStreamChunk.ToolCallDelta -> {
+                        is ChatStreamChunk.Delta,
+                        is ChatStreamChunk.ReasoningDelta,
+                        is ChatStreamChunk.ToolCallDelta -> {
                             chatRepo.updateAssistantText(
                                 profileId = profileId,
                                 conversationId = convId,

@@ -54,6 +54,8 @@ This repository is built around:
 - No telemetry by default.
 - Runtime Venice model/capability discovery rather than static model allowlists.
 - Cancellation-native chat SSE transport with explicit completion markers and structured transport errors.
+- Typed chat reasoning controls with reasoning streamed separately from answer text.
+- Correct binary image edit/upscale contracts and typed queued audio/video lifecycle primitives.
 - A read-only desktop source mirror used for parity work.
 
 The repository evolves quickly. Treat the source tree and the parity matrix as authoritative if this README becomes stale.

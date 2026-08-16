@@ -14,9 +14,8 @@ class VeniceParametersSerializationTest {
     }
 
     @Test
-    fun `preserves explicit safe_mode false in serialized JSON`() {
+    fun `serializes documented Venice chat parameters without provider image safety fields`() {
         val params = VeniceParameters(
-            safeMode = false,
             enableWebSearch = "auto",
             includeVeniceSystemPrompt = true,
         )
@@ -28,7 +27,7 @@ class VeniceParametersSerializationTest {
 
         val serialized = json.encodeToString(ChatRequest.serializer(), request)
 
-        assertTrue("Must include safe_mode: false", serialized.contains("\"safe_mode\":false"))
+        assertFalse("Chat requests must not include image-only safe_mode", serialized.contains("safe_mode"))
         assertTrue("Must include enable_web_search: auto", serialized.contains("\"enable_web_search\":\"auto\""))
         assertTrue("Must include include_venice_system_prompt: true", serialized.contains("\"include_venice_system_prompt\":true"))
     }
@@ -74,5 +73,26 @@ class VeniceParametersSerializationTest {
         assertEquals(1, msg.toolCalls?.size)
         assertEquals("call_abc123", msg.toolCalls?.first()?.id)
         assertEquals("get_current_weather", msg.toolCalls?.first()?.function?.name)
+    }
+
+    @Test
+    fun `serializes typed reasoning controls and preserves reasoning fields`() {
+        val request = ChatRequest(
+            model = "reasoning-model",
+            messages = listOf(
+                ChatMessage(
+                    role = "assistant",
+                    content = "answer",
+                    reasoningContent = "[Some reasoning content is encrypted]",
+                ),
+            ),
+            reasoning = ReasoningConfig(enabled = true, effort = ReasoningEffort.HIGH, summary = ReasoningSummary.CONCISE),
+            reasoningEffort = ReasoningEffort.XHIGH,
+        )
+
+        val serialized = json.encodeToString(ChatRequest.serializer(), request)
+        assertTrue(serialized.contains("\"reasoning\":{\"enabled\":true,\"effort\":\"high\",\"summary\":\"concise\"}"))
+        assertTrue(serialized.contains("\"reasoning_effort\":\"xhigh\""))
+        assertTrue(serialized.contains("\"reasoning_content\":\"[Some reasoning content is encrypted]\""))
     }
 }

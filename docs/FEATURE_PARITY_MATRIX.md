@@ -4,17 +4,17 @@ Status meanings: **Foundation** = a real Android primitive is present; **Scaffol
 
 | Stable ID | Desktop area | Android now | Android target |
 |---|---|---|---|
-| `chat` | Chat | Foundation | Cancellation-native SSE across `/chat/completions` with strict terminal-state handling, structured HTTP failures, multiline event parsing, and profile-scoped persistence. Capabilities-driven model selection is persisted per conversation and restored on restart. Non-streaming completions, tools, attachments, projects, and agent approvals remain incomplete. |
+| `chat` | Chat | Foundation | Cancellation-native SSE with strict terminal-state handling, structured HTTP failures, multiline parsing, separate reasoning deltas, and profile-scoped answer persistence. Non-streaming completions, multimodal content, full tools, reasoning persistence/UI, projects, and agent approvals remain incomplete. |
 | `character-chats` | Character Chats | Scaffolded | Hosted/local cards, isolated identity, greetings, personas, lorebooks, scene generation |
 | `history` | History | Scaffolded | Room persistence, folders, lock/import/export/recovery |
-| `image` | Image Studio | Foundation | Generate/edit with runtime capability gating, binary payload memory optimizations, SAF photo picker, ImageViewModel & ImageScreen |
+| `image` | Image Studio | Foundation | Generate/edit with runtime capability gating, corrected binary edit responses, Photo Picker input, and ImageViewModel/ImageScreen. Durable media storage/export, multipart, multi-edit/background removal/styles UI remain incomplete. |
 | `media` | Media Studio | Scaffolded | Content-addressed media store, gallery, compare, lineage, Save As, manifest export |
 | `image-inspector` | Image Inspector | Scaffolded | Photo Picker/SAF import, bounded decode, vision analysis, prompt reconstruction |
 | `prompts` | Prompts | Scaffolded | Scoped prompt library, tags, immutable versions |
 | `scenes` | Scene Composer | Scaffolded | Touch canvas, prompts/media/models, persisted graph |
-| `audio` | Audio Studio | Foundation (SDK) | SDK client for `/audio/speech`, voices; Media3 UI playback planned |
-| `music` | Music Studio | Scaffolded | Quote/queue/retrieve/complete, durable jobs |
-| `video` | Video Studio | Foundation (SDK) | SDK client for `/video/queue`, `/video/retrieve`, `/video/complete` with stream/JSON discrimination; UI planned |
+| `audio` | Audio Studio | Foundation (SDK) | SDK speech, multipart transcription, and voice-cloning contracts exist; Media3 UI playback/persistence remain planned. |
+| `music` | Music Studio | Foundation (SDK) | Typed quote/queue/retrieve/complete contracts exist; durable WorkManager polling and UI remain absent. |
+| `video` | Video Studio | Foundation (SDK) | SDK queue/quote/retrieve/complete/transcription contracts exist with truthful binary/JSON-complete discrimination; durable jobs and UI remain planned. |
 | `embeddings` | Embeddings | Scaffolded | Vector requests/inspection |
 | `search` | Research | Scaffolded | Venice/Jina search + scrape + synthesis + citations + saved sessions |
 | `characters` | Characters | Scaffolded | Hosted/local libraries, image cache, card import/export |

@@ -50,6 +50,20 @@ Follow this 14-step workflow whenever modifying or adding Venice API endpoints:
 13. **Add Tests & Fixtures**: Write unit tests using authoritative schemas (e.g. `MockWebServer` or wire mocks).
 14. **Update Parity Matrix**: Record changed status in [`docs/FEATURE_PARITY_MATRIX.md`](file:///Users/super_user/Projects/Venice%20Fyr/docs/FEATURE_PARITY_MATRIX.md).
 
+### Binary and queued media rules
+
+- Validate successful media `Content-Type` before consuming bytes and reject empty bodies.
+- Return MIME type and request metadata with edit/upscale/retrieve bytes; never decode binary media as JSON or stringify it.
+- Treat queue submission, processing, JSON completion, and binary completion as distinct states.
+- Retain `/video/queue` `download_url` in caller-owned job state; `/video/retrieve` does not invent or return that URL.
+- Use cancellation-native OkHttp calls so coroutine cancellation reaches the active socket.
+
+### Chat reasoning rules
+
+- `reasoning` and `reasoning_effort` are top-level request fields.
+- Emit `reasoning_content` as a separate stream chunk and preserve provider placeholders verbatim.
+- Do not merge reasoning into assistant answer text. Persistence and UI exposure require an explicit privacy/product decision.
+
 ---
 
 ## 3. How-To: Update Model Capability Support
@@ -62,7 +76,7 @@ Follow this 14-step workflow whenever modifying or adding Venice API endpoints:
 ### Workflow
 1. Inspect the upstream `model_spec` properties in `$VENICE_API_DOCS_SOURCE/swagger.yaml`.
 2. If new capability flags exist (e.g. `supportsReasoningEffort`, `supportsXSearch`), add them to `ModelCapabilitiesSpec` and `ModelCapabilities`.
-3. If new symbolic traits are defined (e.g. `text:default`, `image:fast`), ensure `ModelCatalog.defaultTextModelId` and `modelForTrait()` resolve them.
+3. If new symbolic traits are defined (e.g. `text:default`, `image:fast`), ensure `ModelCatalog.defaultModelIdFor(type)`, `defaultTextModelId`, and `modelForTrait()` resolve them without accepting orphan or offline targets.
 4. Update unit test fixtures to match authoritative upstream JSON shapes.
 5. Verify that models missing optional metadata degrade safely without crashing.
 

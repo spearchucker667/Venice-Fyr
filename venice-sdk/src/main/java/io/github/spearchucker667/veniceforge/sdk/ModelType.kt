@@ -8,7 +8,6 @@ enum class ModelType(val wireName: String) {
     TEXT("text"),
     IMAGE("image"),
     VIDEO("video"),
-    AUDIO("audio"),
     TTS("tts"),
     ASR("asr"),
     EMBEDDING("embedding"),

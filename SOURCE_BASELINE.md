@@ -63,3 +63,12 @@ The dependency set intentionally favors stable releases. Re-verify versions befo
 - Venice API Docs HEAD: `6e69346b13695bd53ba33a1d34e7b28841e10f98` (Swagger `20260814.194349`).
 - Upstream paths consulted: `swagger.yaml` (`POST /chat/completions`, `ChatCompletionRequest`), `api-reference/error-codes.mdx`, `guides/projects/rust-llm-gateway.mdx`, `agents.md`, `skill.md`, and the required `api-reference/`, `guides/`, `overview/`, and `data/static-models.json` source subset.
 - Drift review from the prior `db3b9f4` snapshot found no chat wire change relevant to this correction; the Swagger change adds `discount_to_user` model metadata and advances the schema version.
+
+### 2026-08-15 Post-Remediation Contract Audit
+
+- Venice Fyr starting HEAD: `df8f383b590ad7f8e40201e1b6b64ab039712f54`.
+- Venice API Docs HEAD: `6e69346b13695bd53ba33a1d34e7b28841e10f98` (Swagger `20260814.194349`; no source drift).
+- Desktop parity HEAD: `bc5c17374ef4937f5837f5580d29a88bfab333ee`.
+- Upstream paths consulted: `swagger.yaml`; `agents.md`; `skill.md`; `api-reference/endpoint/{chat,image,video,audio}`; `guides/features/reasoning-models.mdx`; `guides/media/`; `overview/`; and `data/static-models.json`.
+- Contract corrections: binary image edit/multi-edit/upscale results, video JSON `COMPLETED`, typed chat reasoning controls/deltas, queued audio lifecycle, audio transcription/voice upload, video quote/transcription, and HTTP 402 classification.
+- Runtime discovery correction: `/models/traits` and `/models/compatibility_mapping` now receive each discovered valid modality instead of silently inheriting the server's text default.

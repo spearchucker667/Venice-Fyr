@@ -1,8 +1,8 @@
 package io.github.spearchucker667.veniceforge.sdk
 
 /**
- * Complete endpoint-path inventory from Venice Forge's tracked 2026-08-14
- * OpenAPI snapshot (schema 20260814.153445).
+ * Complete endpoint-path inventory from Venice's official OpenAPI snapshot
+ * (schema 20260814.194349, upstream 6e69346b).
  *
  * Runtime model metadata remains authoritative for active models, constraints,
  * capabilities, and pricing. Presence here does not imply app-UI exposure.
